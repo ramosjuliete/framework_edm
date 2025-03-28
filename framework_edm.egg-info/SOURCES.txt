@@ -1,0 +1,11 @@
+setup.py
+framework_edm/__init__.py
+framework_edm/clustering.py
+framework_edm/exploratoyanalysis.py
+framework_edm/filterlogs.py
+framework_edm/minimaldataset.py
+framework_edm/resultsanalysis.py
+framework_edm.egg-info/PKG-INFO
+framework_edm.egg-info/SOURCES.txt
+framework_edm.egg-info/dependency_links.txt
+framework_edm.egg-info/top_level.txt
