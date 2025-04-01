@@ -17,7 +17,7 @@ import seaborn as sns
 import warnings
 warnings.simplefilter("ignore")
 
-
+#Classe para aplicação de diferentes algoritmos de clustering e métodos de escolha de parâmetros
 class Clustering:
 
     def __init__(self, algorithm, path):

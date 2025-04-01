@@ -51,8 +51,8 @@ class ExploratoryAnalysis:
         return estatistica, p_valor
 
     def applyNormalityTest(self, dataframe):
-        if 'iduser' in dataframe.columns:
-            dataframe.drop('iduser', axis=1, inplace=True)
+        #if 'iduser' in dataframe.columns:
+            #dataframe.drop('iduser', axis=1, inplace=True)
         resultados = {}
         for coluna in dataframe.select_dtypes(include=[np.number]).columns:
             estatistica, p_valor = self.aplicar_kstest(dataframe[coluna])
@@ -64,4 +64,7 @@ class ExploratoryAnalysis:
             estatistica = resultado['estatistica']
             p_valor = resultado['p_valor']
             print(f"{coluna}: statistic = {estatistica}, p_value = {p_valor:.6f}")
+            #TROCAR PELAS LINHAS ABAIXO PARA MOSTRAR A FRASE DE NORMALIDADE
+            #normalidade = "Segue uma distribuição normal" if p_valor > 0.05 else "Não segue uma distribuição normal"
+            #print(f"{coluna}: statistic = {estatistica}, p_value = {p_valor:.6f} → {normalidade}")
         print('\n')
