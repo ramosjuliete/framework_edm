@@ -44,6 +44,7 @@ class ExploratoryAnalysis:
         plt.tight_layout()
         plt.savefig(path+'spearman_correlation_matrix.png')
         print(f'Spearman Correlation Matrix saved in {path}')
+        plt.show()
     
     # Função para aplicar o teste Kolmogorov-Smirnov
     def aplicar_kstest(self, coluna):
@@ -63,8 +64,8 @@ class ExploratoryAnalysis:
         for coluna, resultado in resultados.items():
             estatistica = resultado['estatistica']
             p_valor = resultado['p_valor']
-            print(f"{coluna}: statistic = {estatistica}, p_value = {p_valor:.6f}")
+            #print(f"{coluna}: statistic = {estatistica}, p_value = {p_valor:.6f}")
             #TROCAR PELAS LINHAS ABAIXO PARA MOSTRAR A FRASE DE NORMALIDADE
-            #normalidade = "Segue uma distribuição normal" if p_valor > 0.05 else "Não segue uma distribuição normal"
-            #print(f"{coluna}: statistic = {estatistica}, p_value = {p_valor:.6f} → {normalidade}")
+            normality = "Follows a normal distribution" if p_valor > 0.05 else "Does not follow a normal distribution"
+            print(f"{coluna}: statistic = {estatistica}, p_value = {p_valor:.6f} → {normality}")
         print('\n')

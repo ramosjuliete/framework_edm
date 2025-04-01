@@ -165,5 +165,5 @@ class MinimalDataset:
         return df_grade
 
     def generateMinimalDataset(self,path, dataframe):
-        print("Método para finalização do dataset e salvamento do arquivo .csv")
         dataframe.to_csv(path+'generaldataset_'+self.generation_method+'.csv', sep=';', encoding='utf-8', index=False)
+        print(f"MinimalDataset saved in {path}")

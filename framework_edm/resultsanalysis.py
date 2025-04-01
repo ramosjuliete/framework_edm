@@ -71,28 +71,25 @@ class ResultsAnalysis:
         plt.figure(figsize=(16, 8))  # Ajustando o tamanho da figura
         num_subplots = len(list_columns)  # Definir o número correto de subgráficos
 
-        # Definir as cores personalizadas
-        colors = ['#3CB371', '#FF7F50']  # Verde e laranja
-
         # Criar os boxplots
         for i, col in enumerate(list_columns, 1):  # Agora, 'cluster' não será incluído
             plt.subplot(rows, columns, i)
             if(type_graphic=='boxplot'):
-                sns.boxplot(x='cluster', y=col, data=df_cluster, hue='cluster', palette=colors, legend=False)
+                sns.boxplot(x='cluster', y=col, data=df_cluster, hue='cluster', palette="Set2", legend=False)
             elif(type_graphic=='violinplot'):
-                sns.violinplot(x='cluster', y=col, data=df_cluster, hue='cluster', palette=colors, legend=False)
+                sns.violinplot(x='cluster', y=col, data=df_cluster, hue='cluster', palette="Set2", legend=False)
             elif(type_graphic=='stripplot'):
-                sns.stripplot(x='cluster', y=col, data=df_cluster, hue='cluster', palette=colors, legend=False)
+                sns.stripplot(x='cluster', y=col, data=df_cluster, hue='cluster', palette="Set2", legend=False)
             elif(type_graphic=='density'):
-                sns.kdeplot(data=df_cluster, x=col,hue='cluster',fill=True, common_norm=False, palette=colors)
+                sns.kdeplot(data=df_cluster, x=col,hue='cluster',fill=True, common_norm=False, palette="Set2")
             else:
                 print('Unsupported chart type!\nChoose: boxplot, violinplot, stripplot or density to generate the plot')
             plt.title(col)  # Adiciona título para melhor visualização
 
         plt.tight_layout()
-        plt.show()
         plt.savefig(path+self.algorithm+type_graphic+'.png')
         print(f'{type_graphic} for {self.algorithm} algorithm saved in {path}')
+        plt.show()
     
     def checkProfileSRL(self, df):
         # Seleciona as colunas numéricas, excluindo a coluna 'cluster'
@@ -252,8 +249,8 @@ class ResultsAnalysis:
         plt.grid(axis='x', linestyle='--', alpha=0.7)
 
         # Display the chart
-        plt.show()
         plt.savefig(path+self.algorithm+'_profileSRL.png')
         print(f'Profile SRL Graphic for {self.algorithm} algorithm saved in {path}')
+        plt.show()
     
     

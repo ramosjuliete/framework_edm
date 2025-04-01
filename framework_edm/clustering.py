@@ -42,9 +42,9 @@ class Clustering:
         plt.figure(figsize=(10, 6))
         clusterer.condensed_tree_.plot(select_clusters=True, selection_palette=sns.color_palette())
         plt.title("Condensation Dendrogram - HDBSCAN")
-        plt.show()
         plt.savefig(self.path+'condensation_dendrogram_hdbscan.png')
         print(f'Condensation Dendrogram - HDBSCAN saved in {self.path}')
+        plt.show()
             
     def analysisMeasuresHDBSCAN(self, dataframe, min_samples_values, min_cluster_size_values):
         #método recebe o dataframe e duas listas com valores de min-samples e min-cluster-sizes
@@ -97,9 +97,9 @@ class Clustering:
         plt.ylabel('Silhouette Score')
         plt.title('Silhouette Score for different K values')
         plt.grid(True)
-        plt.show()
         plt.savefig(self.path+'silhouette_scores_analysis.png')
         print(f'Silhouette Scores Graphic saved in {self.path}')
+        plt.show()
         # Encontrar o melhor valor de K com base no Silhouette Score
         best_k = k_values[np.argmax(silhouette_scores)]
         print("The best K value for K-Means, based on the Silhouette Score, is:", best_k)
@@ -134,9 +134,10 @@ class Clustering:
             plt.axvline(best_k, linestyle='--', color='r', label=f'Best K-Value: {best_k}')
             plt.legend()
 
-        plt.show()
+        
         plt.savefig(self.path+'elbow_method.png')
         print(f'Elbow Method figure saved in {self.path}')
+        plt.show()
         print("The best K value for K-Means, based on the Elbow Method, is:", best_k)
         return best_k
 
@@ -166,9 +167,9 @@ class Clustering:
         plt.xlabel("Samples")
         plt.ylabel("Distance")
         plt.legend()
-        plt.show()
         plt.savefig(self.path+'dendogram_aglomerative_clustering.png')
         print(f'Dendogram Graphic saved in {self.path}')
+        plt.show()
 
         # Plot do Silhouette Score
         plt.figure(figsize=(8, 6))
@@ -179,9 +180,9 @@ class Clustering:
         plt.title('Silhouette Scores for different numbers of clusters (AgglomerativeClustering)')
         plt.grid(True)
         plt.legend()
-        plt.show()
         plt.savefig(self.path+'silhouettescores_aglomerative_clustering.png')
         print(f'Silhouette Scores Graphic for Agglomerative Clustering saved in {self.path}')
+        plt.show()
 
         print("The best K value for Agglomerative Clustering, based on the Silhouette Score, is:", best_k)
         return best_k
