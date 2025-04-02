@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import scikit_posthocs as sp
 from collections import defaultdict
+from scipy.stats import mannwhitneyu, kruskal
 import warnings
 warnings.simplefilter("ignore")
 class ResultsAnalysis:
@@ -32,6 +33,7 @@ class ResultsAnalysis:
         if 'name' in df.columns:
             df = df.drop(columns=['name'])
         return df
+    
 
     def statisticalByClusters(self, df):
         #print('método que mostra as descrições estatísticas de cada cluster')
@@ -45,6 +47,103 @@ class ResultsAnalysis:
             print(f"\nCluster {cluster} Statistics :")
             print(df_cluster.describe())
     
+    def checkProfileSRL(self, dataframe):
+        df_cluster = self.removeIdentifierColumns(dataframe)
+        significance_level = 0.05
+
+        unique_clusters = df_cluster["cluster"].unique()
+        valid_clusters = [c for c in unique_clusters if c != -1]
+
+        higher_mean_counter = defaultdict(int)
+        cluster_stats = {}
+
+        if len(valid_clusters) == 2:
+            cluster_a, cluster_b = valid_clusters
+            df_cluster_a = df_cluster[df_cluster['cluster'] == cluster_a]
+            df_cluster_b = df_cluster[df_cluster['cluster'] == cluster_b]
+
+            for column in df_cluster.columns[:-1]:  # Excluindo 'cluster'
+                stat, p_value = mannwhitneyu(df_cluster_a[column], df_cluster_b[column])
+
+                if p_value < significance_level:
+                    mean_a, mean_b = df_cluster_a[column].mean(), df_cluster_b[column].mean()
+                    significant_cluster = cluster_a if mean_a > mean_b else cluster_b
+                    higher_mean_counter[significant_cluster] += 1
+
+            # Salvar estatísticas de cada cluster
+            for cluster in valid_clusters:
+                cluster_stats[cluster] = {
+                    "mean": df_cluster[df_cluster["cluster"] == cluster].mean(),
+                    "median": df_cluster[df_cluster["cluster"] == cluster].median()
+                }
+
+        elif len(valid_clusters) > 2:
+            difference_counter = defaultdict(int)
+
+            for feature in df_cluster.columns[:-1]:  # Excluindo 'cluster'
+                groups = [df_cluster[df_cluster["cluster"] == cluster][feature] for cluster in valid_clusters]
+
+                stat, p = kruskal(*groups)
+
+                if p < significance_level:
+                    df_filtered = df_cluster[df_cluster["cluster"].isin(valid_clusters)]
+                    dunn_results = sp.posthoc_dunn(df_filtered, val_col=feature, group_col='cluster', p_adjust='bonferroni')
+
+                    for i, row in enumerate(dunn_results.index):
+                        for j, col in enumerate(dunn_results.columns):
+                            if i < j and dunn_results.loc[row, col] < significance_level:
+                                mean_row = df_cluster[df_cluster["cluster"] == row][feature].mean()
+                                mean_col = df_cluster[df_cluster["cluster"] == col][feature].mean()
+                                significant_cluster = row if mean_row > mean_col else col
+                                higher_mean_counter[significant_cluster] += 1
+
+            # Salvar estatísticas de cada cluster
+            for cluster in valid_clusters:
+                cluster_stats[cluster] = {
+                    "mean": df_cluster[df_cluster["cluster"] == cluster].mean(),
+                    "median": df_cluster[df_cluster["cluster"] == cluster].median()
+                }
+
+        else:
+            print("❌ Error: At least two clusters are required to perform a statistical significance test.")
+            return
+
+        # 🏆 Garantir que todos os clusters estejam no ranking
+        all_clusters = set(valid_clusters)  # Todos os clusters
+        ranked_clusters = set(higher_mean_counter.keys())  # Apenas os que tiveram alguma vitória
+
+        # Encontrar os clusters que nunca venceram (devem estar na última posição)
+        non_ranked_clusters = list(all_clusters - ranked_clusters)
+
+        # Criar a lista de clusters ordenada pelo número de vitórias
+        sorted_clusters = sorted(higher_mean_counter.items(), key=lambda x: x[1], reverse=True)
+        cluster_ranking = [cluster for cluster, _ in sorted_clusters]
+
+        # Adicionar os clusters que nunca venceram ao final da lista
+        cluster_ranking.extend(non_ranked_clusters)
+
+        # 📊 Exibir médias e medianas de cada cluster antes da definição do perfil SRL
+        print("\n📊 **Mean and Median Values by Cluster**")
+        for cluster, stats in cluster_stats.items():
+            print(f"\nCluster {cluster}:")
+            print(f"   - Mean:\n{stats['mean']}")
+            print(f"   - Median:\n{stats['median']}")
+
+        # 🏆 Exibir a hierarquia dos clusters (SRL e demais)
+        print("\n🏆 **Final Cluster Ranking (From SRL to Lowest)**")
+        if len(cluster_ranking) == 2:
+            print(f"   1. Cluster {cluster_ranking[0]} → SRL Profile")
+            print(f"   2. Cluster {cluster_ranking[1]} → No SRL Profile")
+        else:
+            for position, cluster in enumerate(cluster_ranking, start=1):
+                if position == 1:
+                    label = "SRL Profile"
+                elif position == len(cluster_ranking):
+                    label = "No SRL Profile"
+                else:
+                    label = f"SRL Profile - Level {position}"
+                print(f"   {position}. Cluster {cluster} → {label}")
+
     def statisticalSignificance(self, dataframe, significance_level):
         #remover os atributos identificadores
         df_cluster = self.removeIdentifierColumns(dataframe)
@@ -55,24 +154,24 @@ class ResultsAnalysis:
         if len(unique_clusters) == 2:
             print(f'** Two clusters were found; therefore, we will apply the Mann-Whitney U test. **')
 
-            # Automatically assign clusters
+            # Buscando os labels dos clusters
             cluster_a, cluster_b = unique_clusters
 
             df_cluster_a = df_cluster[df_cluster['cluster'] == cluster_a]
             df_cluster_b = df_cluster[df_cluster['cluster'] == cluster_b]
 
-            # Apply the Mann-Whitney U test for each numeric column (excluding 'cluster')
+            # aplicação do teste de mannwhitney
             mannwhitney_results = {}
 
-            for column in df_cluster.columns[:-1]:  # Excluding 'cluster'
+            for column in df_cluster.columns[:-1]:  # Excluindo a coluna 'cluster'
                 stat, p_value = stats.mannwhitneyu(df_cluster_a[column], df_cluster_b[column])
                 mannwhitney_results[column] = {'U statistic': stat, 'p-value': p_value}
 
-            # Display the results
+            # mostrando os resultados
             df_results = pd.DataFrame(mannwhitney_results).T
             print(f'\nStatistical Results:\n{df_results}')
 
-            # Interpretation of Results
+            # Interpretação
             print("\nInterpretation of Results:")
             for column, values in mannwhitney_results.items():
                 p_value = values['p-value']
@@ -165,72 +264,6 @@ class ResultsAnalysis:
         plt.savefig(path+self.algorithm+type_graphic+'.png')
         print(f'{type_graphic} for {self.algorithm} algorithm saved in {path}')
         plt.show()
-    
-    def checkProfileSRL(self, df):
-        # Seleciona as colunas numéricas, excluindo a coluna 'cluster'
-        numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-        numeric_cols.remove('cluster')
-        numeric_cols.remove('iduser')
-        # Dicionário para armazenar os resultados
-        results = {}
-
-        # Para cada coluna, compara as estatísticas e aplica o teste de Mann-Whitney U
-        for col in numeric_cols:
-            group0 = df[df['cluster'] == 0][col]
-            group1 = df[df['cluster'] == 1][col]
-    
-            # Calcular média e mediana para cada grupo
-            mean0, median0 = group0.mean(), group0.median()
-            mean1, median1 = group1.mean(), group1.median()
-
-            # Aplica o teste de Mann-Whitney U
-            stat, p_value = stats.mannwhitneyu(group0, group1)
-    
-            # Define qual cluster apresenta valor maior (utilizando média)
-            if p_value < 0.05:
-                if mean0 > mean1:
-                    maior = "Cluster 0"
-                elif mean1 > mean0:
-                    maior = "Cluster 1"
-                else:
-                    maior = "Both (equal)"
-                result_text = (f"{maior} has a higher average.")
-            else:
-                result_text = f"No statistically significant difference (p={p_value:.4f})."
-    
-            results[col] = {
-                'mean_cluster_0': mean0,
-                'median_cluster_0': median0,
-                'mean_cluster_1': mean1,
-                'median_cluster_1': median1,
-                'p_value': p_value,
-                'result': result_text
-            }
-
-        # Converter os resultados para um DataFrame para visualização
-        results_df = pd.DataFrame(results).T
-        print("\nFeatures Details:")
-        print(results_df, "\n")
-
-        # Contagem para determinar qual cluster possui maiores médias na maioria das features 
-        # (considera apenas features com diferença estatisticamente significativa)
-        count_cluster0 = 0
-        count_cluster1 = 0
-        for col, res in results.items():
-            if res['p_value'] < 0.05:
-                if res['mean_cluster_0'] > res['mean_cluster_1']:
-                    count_cluster0 += 1
-                elif res['mean_cluster_1'] > res['mean_cluster_0']:
-                    count_cluster1 += 1
-
-        # Exibir resultado global
-        print("Result Analysis:")
-        if count_cluster0 > count_cluster1:
-            print(f"Cluster 0 presents higher averages in {count_cluster0} of the features (significant difference). We consider Cluster 0 with SRL Profile!\n")
-        elif count_cluster1 > count_cluster0:
-            print(f"Cluster 1 presents higher averages in {count_cluster1} of the features (significant difference). We consider Cluster 1 with SRL Profile!\n")
-        else:
-            print("Both clusters have similar performance in the averages of the analyzed features. No SRL profile considered!\n")
         
 
     def profileSRLdescription(self, dataframe, fileGrade, separatorFileGrade):
@@ -275,7 +308,10 @@ class ResultsAnalysis:
             b_pct   = row['B_pct']
             c_count = row['C']
             c_pct   = row['C_pct']
-            print(f"Percentage of Students in the Cluster {cluster}:")
+            if(cluster==-1):
+                print(f"\nPercentage of Students considered Outliers:")
+            else:
+                print(f"\nPercentage of Students in the Cluster {cluster}:")
             print(f"   Students with A Status = {a_count} ({a_pct:.2f}%)")
             print(f"   Students with B Status = {b_count} ({b_pct:.2f}%)")
             print(f"   Students with C Status = {c_count} ({c_pct:.2f}%)")
