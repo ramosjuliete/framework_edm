@@ -5,6 +5,8 @@ from scipy import stats
 import os
 import matplotlib.pyplot as plt
 import seaborn as sns
+import scikit_posthocs as sp
+from collections import defaultdict
 import warnings
 warnings.simplefilter("ignore")
 class ResultsAnalysis:
@@ -14,6 +16,17 @@ class ResultsAnalysis:
         self.fileCluster = fileCluster
         self.separatorFileCluster = separatorFileCluster    
 
+
+    def removeIdentifierColumns(self, dataframe):
+        # Colunas a remover
+        remove_columns = ['iduser','name']
+        # Verifica e remove as colunas existentes
+        existing_columns = [col for col in remove_columns if col in dataframe.columns]
+        if existing_columns:
+            dataframe = dataframe.drop(columns=existing_columns)
+        return dataframe
+
+        
     def loadFile(self):
         df = pd.read_csv(self.fileCluster, delimiter=self.separatorFileCluster)
         if 'name' in df.columns:
@@ -33,29 +46,91 @@ class ResultsAnalysis:
             print(df_cluster.describe())
     
     def statisticalSignificance(self, dataframe, significance_level):
-        #print('método que realiza o teste de significância estatística não paramétrico mann witney para 2 clusters, kruskal waliis para mais clusters')
-        df_cluster_0 = dataframe[dataframe['cluster'] == 0]
-        df_cluster_1 = dataframe[dataframe['cluster'] == 1]
+        #remover os atributos identificadores
+        df_cluster = self.removeIdentifierColumns(dataframe)
+        #encontrando a quantidade de clusters
+        unique_clusters = df_cluster["cluster"].unique()
+        valid_clusters = [c for c in unique_clusters if c != -1]
 
-        # 🔹 Aplicar o Teste de Mann-Whitney U para cada coluna (exceto 'cluster')
-        mannwhitney_results = {}
+        if len(unique_clusters) == 2:
+            print(f'** Two clusters were found; therefore, we will apply the Mann-Whitney U test. **')
 
-        for column in dataframe.columns[1:-1]:  # Excluindo a coluna 'iduser' e 'cluster'
-            stat, p_value = stats.mannwhitneyu(df_cluster_0[column], df_cluster_1[column])
-            mannwhitney_results[column] = {'U statistic': stat, 'p-value': p_value}
+            # Automatically assign clusters
+            cluster_a, cluster_b = unique_clusters
 
-        # 🔹 Exibir os resultados
-        df_results = pd.DataFrame(mannwhitney_results).T
-        print(f'\nStatistical Results\n{df_results}')
+            df_cluster_a = df_cluster[df_cluster['cluster'] == cluster_a]
+            df_cluster_b = df_cluster[df_cluster['cluster'] == cluster_b]
 
-        print("\nInterpretation of Results:")
-        for column, values in mannwhitney_results.items():
-            p_value = values['p-value']
-            if p_value < significance_level:
-                print(f" - {column}: Significant difference between clusters (p-value={p_value:.4f})")
-            else:
-                print(f" - {column}: No significant difference between clusters (p-value={p_value:.4f})")
+            # Apply the Mann-Whitney U test for each numeric column (excluding 'cluster')
+            mannwhitney_results = {}
 
+            for column in df_cluster.columns[:-1]:  # Excluding 'cluster'
+                stat, p_value = stats.mannwhitneyu(df_cluster_a[column], df_cluster_b[column])
+                mannwhitney_results[column] = {'U statistic': stat, 'p-value': p_value}
+
+            # Display the results
+            df_results = pd.DataFrame(mannwhitney_results).T
+            print(f'\nStatistical Results:\n{df_results}')
+
+            # Interpretation of Results
+            print("\nInterpretation of Results:")
+            for column, values in mannwhitney_results.items():
+                p_value = values['p-value']
+                if p_value < significance_level:
+                    print(f" - {column}: ✨ Significant difference between clusters (p-value={p_value:.4f})")
+                else:
+                    print(f" - {column}: ✅ No significant difference between clusters (p-value={p_value:.4f})")
+
+        elif len(valid_clusters)>2:
+            print(f'** More than two clusters were found; therefore, we will apply the Kruskal-Wallis test and the Dunn test. **')
+
+            # Counter to track which cluster appears most frequently in significant differences
+            difference_counter = defaultdict(int)
+
+            # Filter valid clusters (removing -1 if present)
+            valid_clusters = [cluster for cluster in df_cluster["cluster"].unique() if cluster != -1]
+
+            # Loop through numerical features to apply statistical tests
+            for feature in df_cluster.columns[:-1]:  # Excluding the 'cluster' column
+                print(f"\n🔹 Testing attribute: {feature}")
+
+                # Separating values by cluster (only valid clusters)
+                groups = [df_cluster[df_cluster["cluster"] == cluster][feature] for cluster in valid_clusters]
+
+                # Step 1: Kruskal-Wallis Test
+                stat, p = stats.kruskal(*groups)
+                print(f"   - H Statistic = {stat:.4f}, p-value = {p:.4f}")
+
+                # If a significant difference is found (p < 0.05), apply Dunn's test
+                if p < significance_level:
+                    print("   ✨ Statistically significant difference found! Applying Dunn's test...")
+
+                    # 📌 Step 2: Dunn's Test for multiple comparisons (only valid clusters)
+                    df_filtered = df_cluster[df_cluster["cluster"].isin(valid_clusters)]
+                    dunn_results = sp.posthoc_dunn(df_filtered, val_col=feature, group_col='cluster', p_adjust='bonferroni')
+
+                    print("   🔍 Dunn's Test Results (adjusted p-values):")
+                    print(dunn_results)
+
+                    # 🔹 Counting how often each cluster appears in significant differences
+                    for i, row in enumerate(dunn_results.index):
+                        for j, col in enumerate(dunn_results.columns):
+                            if i < j:  # Avoid duplicate comparisons
+                                p_dunn = dunn_results.loc[row, col]
+                                if p_dunn < significance_level:
+                                    print(f"    Cluster {row} is significantly different from Cluster {col} (p = {p_dunn:.4f})")
+                                    difference_counter[row] += 1
+                                    difference_counter[col] += 1
+                else:
+                    print("   ✅ No significant differences between clusters for this feature.")
+
+            # 🔹 Displaying the clusters most frequently found as different
+            print("\n📊 **Summary: Clusters that appeared most frequently as different**")
+            sorted_clusters = sorted(difference_counter.items(), key=lambda x: x[1], reverse=True)
+            for cluster, count in sorted_clusters:
+                print(f"   - Cluster {cluster}: {count} occurrences of significant difference")
+        else: 
+            print("❌ Error: At least two clusters are required to perform a statistical significance test.")
 
     def plotGraphicClusters(self, dataframe, rows, columns,type_graphic, path):
         print('método para criar e salvar os boxplot de comparação dos dois clusters')
