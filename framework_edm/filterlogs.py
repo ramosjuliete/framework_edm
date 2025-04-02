@@ -9,18 +9,21 @@ class FilterLogs():
         self.path_sheet = path_sheet
         self.separator = separator
 
-    #método para extrair o id do usuário da coluna descrição
+    #MÉTODO 1 --> método para extrair o id do usuário da coluna descrição
     def extract_id_user(self,description):
         match = re.search(r"user with id '(\d+)'", description)
         if match:
             return match.group(1)  # Retorna o ID capturado
         return None  # Retorna None se não encontrar um ID
     
-    #método para tradução dos valores da lista de eventos português --> inglês
+    #MÉTODO 2 --> método para tradução dos valores da lista de eventos português --> inglês
     def translate_list(self, listEvents, origin='pt', destination='en'):
         translator = GoogleTranslator(source=origin, target=destination)
         return {item: translator.translate(item) for item in listEvents}
 
+    #MÉTODO 3 --> método para filtrar os logs dos usuários estudantes para relatórios de moodle do IF
+    # verificar questões de como generalizar as colunas de nome, identificação, etc
+    # Talvez buscar o cabeçalho da planilha e trabalhar com ele, ao invés dos nomes colocados manualmente
     def logfilltering(self, fileStudents, separatorStudents, logPathDestination):
         dfLogs = pd.read_csv(self.path_sheet, delimiter=self.separator)
  
@@ -63,6 +66,8 @@ class FilterLogs():
         df_filterlogs.to_csv(fileSaved, index=False) 
 
 
+    # MÉTODO PARA FILTRAR LOGS DO MOODLE DO CURSO PYTHON 
+    # QUANDO RESOLVER O COMENTÁRIO DO MÉTODO ANTERIOR PODERÁ APAGAR ESSE MÉTODO
     def logfillteringPython(self, fileStudents, separatorStudents, logPathDestination):
         dfLogs = pd.read_csv(self.path_sheet, delimiter=self.separator)
         print(dfLogs.columns)

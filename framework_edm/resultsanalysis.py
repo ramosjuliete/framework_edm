@@ -16,8 +16,16 @@ class ResultsAnalysis:
         self.algorithm = algorithm
         self.fileCluster = fileCluster
         self.separatorFileCluster = separatorFileCluster    
-
-
+    
+    #MÉTODO_1 -> Carrega o datframe a partir do arquivo de cluster (.csv) enviado por parâmetro
+    def loadFile(self):
+        df = pd.read_csv(self.fileCluster, delimiter=self.separatorFileCluster)
+        #caso o atributo name esteja presente, este é removido antes do retorno
+        if 'name' in df.columns:
+            df = df.drop(columns=['name'])
+        return df
+    
+    #MÉTODO_2 -> Remove atributos identificadores se houver para facilitar comparações em testes estatísticos
     def removeIdentifierColumns(self, dataframe):
         # Colunas a remover
         remove_columns = ['iduser','name']
@@ -27,14 +35,7 @@ class ResultsAnalysis:
             dataframe = dataframe.drop(columns=existing_columns)
         return dataframe
 
-        
-    def loadFile(self):
-        df = pd.read_csv(self.fileCluster, delimiter=self.separatorFileCluster)
-        if 'name' in df.columns:
-            df = df.drop(columns=['name'])
-        return df
-    
-
+    #MÉTODO_3 -> Mostra a estatística por cluster ao enviar o dataframe que possui a coluna "cluster"
     def statisticalByClusters(self, df):
         #print('método que mostra as descrições estatísticas de cada cluster')
         unique_clusters = df['cluster'].unique()
@@ -47,6 +48,99 @@ class ResultsAnalysis:
             print(f"\nCluster {cluster} Statistics :")
             print(df_cluster.describe())
     
+
+    #MÉTODO_4 -> Realiza testes de significância estatística para verificar se há diferenças significativas entre os clusters
+    #Dois testes podem ser usados: U de Mann Whitney ou Kruskal Wallis
+    def statisticalSignificance(self, dataframe, significance_level):
+        #remover os atributos identificadores
+        df_cluster = self.removeIdentifierColumns(dataframe)
+        #encontrando a quantidade de clusters
+        unique_clusters = df_cluster["cluster"].unique()
+        valid_clusters = [c for c in unique_clusters if c != -1]
+
+        #teste U de Mann Whitney aplicado quando o número de clusters for 2
+        if len(unique_clusters) == 2:
+            print(f'** Two clusters were found; therefore, we will apply the Mann-Whitney U test. **')
+            # Buscando os labels dos clusters
+            cluster_a, cluster_b = unique_clusters
+
+            df_cluster_a = df_cluster[df_cluster['cluster'] == cluster_a]
+            df_cluster_b = df_cluster[df_cluster['cluster'] == cluster_b]
+
+            # aplicação do teste de mannwhitney
+            mannwhitney_results = {}
+
+            for column in df_cluster.columns[:-1]:  # Excluindo a coluna 'cluster'
+                stat, p_value = stats.mannwhitneyu(df_cluster_a[column], df_cluster_b[column])
+                mannwhitney_results[column] = {'U statistic': stat, 'p-value': p_value}
+
+            # mostrando os resultados
+            df_results = pd.DataFrame(mannwhitney_results).T
+            print(f'\nStatistical Results:\n{df_results}')
+
+            # Interpretação
+            print("\nInterpretation of Results:")
+            for column, values in mannwhitney_results.items():
+                p_value = values['p-value']
+                if p_value < significance_level:
+                    print(f" - {column}: ✨ Significant difference between clusters (p-value={p_value:.4f})")
+                else:
+                    print(f" - {column}: ✅ No significant difference between clusters (p-value={p_value:.4f})")
+                    
+        # Teste Kruskal Wallis aplicado quando se tem mais de 2 clusters
+        # Em caso de existir significância estatística, aplica-se o teste Dunn para vericar qual cluster tem melhor resultado
+        elif len(valid_clusters)>2:
+            print(f'** More than two clusters were found; therefore, we will apply the Kruskal-Wallis test and the Dunn test. **')
+
+            # Contador para verificar qual cluster aparece com mais frequência em diferenças significativas
+            difference_counter = defaultdict(int)
+
+            # Filtrar clusters válidos (removendo -1 se presente)
+            valid_clusters = [cluster for cluster in df_cluster["cluster"].unique() if cluster != -1]
+
+            for feature in df_cluster.columns[:-1]:  # Excluding the 'cluster' column
+                print(f"\n🔹 Testing attribute: {feature}")
+
+                # Separação dos clusters
+                groups = [df_cluster[df_cluster["cluster"] == cluster][feature] for cluster in valid_clusters]
+
+                # Fase 1: Kruskal-Wallis Test
+                stat, p = stats.kruskal(*groups)
+                print(f"   - H Statistic = {stat:.4f}, p-value = {p:.4f}")
+
+                # Se existir diferença estatísticamente significante, ou seja, valor p menor que o nível de significância, aplica´se o teste Dunn
+                if p < significance_level:
+                    print("   ✨ Statistically significant difference found! Applying Dunn's test...")
+
+                    # Fase 2: Teste de Dunn para comparações múltiplas (apenas clusters válidos)
+                    df_filtered = df_cluster[df_cluster["cluster"].isin(valid_clusters)]
+                    dunn_results = sp.posthoc_dunn(df_filtered, val_col=feature, group_col='cluster', p_adjust='bonferroni')
+
+                    print("   🔍 Dunn's Test Results (adjusted p-values):")
+                    print(dunn_results)
+
+                    # Contando com que frequência cada cluster aparece em diferenças significativas
+                    for i, row in enumerate(dunn_results.index):
+                        for j, col in enumerate(dunn_results.columns):
+                            if i < j:  # Evita comparações duplicadas
+                                p_dunn = dunn_results.loc[row, col]
+                                if p_dunn < significance_level:
+                                    print(f"    Cluster {row} is significantly different from Cluster {col} (p = {p_dunn:.4f})")
+                                    difference_counter[row] += 1
+                                    difference_counter[col] += 1
+                else:
+                    print("   ✅ No significant differences between clusters for this feature.")
+
+            # Exibindo os clusters mais frequentemente encontrados como diferentes
+            print("\n📊 **Summary: Clusters that appeared most frequently as different**")
+            sorted_clusters = sorted(difference_counter.items(), key=lambda x: x[1], reverse=True)
+            for cluster, count in sorted_clusters:
+                print(f"   - Cluster {cluster}: {count} occurrences of significant difference")
+        else: 
+            print("❌ Error: At least two clusters are required to perform a statistical significance test.")
+
+    #MÉTODO_5 -> Realiza a checagem de algum cluster com Perfil SRL segundo as definições do nosso projeto
+    # Cluster com maiores médias e mediannas nos atributos são considerados com Perfil SRL, para agrupamento com mais de 2 clusters é feito um rankeamento
     def checkProfileSRL(self, dataframe):
         df_cluster = self.removeIdentifierColumns(dataframe)
         significance_level = 0.05
@@ -57,6 +151,7 @@ class ResultsAnalysis:
         higher_mean_counter = defaultdict(int)
         cluster_stats = {}
 
+        #2 clusters
         if len(valid_clusters) == 2:
             cluster_a, cluster_b = valid_clusters
             df_cluster_a = df_cluster[df_cluster['cluster'] == cluster_a]
@@ -76,11 +171,11 @@ class ResultsAnalysis:
                     "mean": df_cluster[df_cluster["cluster"] == cluster].mean(),
                     "median": df_cluster[df_cluster["cluster"] == cluster].median()
                 }
-
+        # Mais de 2 clusters
         elif len(valid_clusters) > 2:
             difference_counter = defaultdict(int)
 
-            for feature in df_cluster.columns[:-1]:  # Excluindo 'cluster'
+            for feature in df_cluster.columns[:-1]:  # Excluindo 'cluster' -1 (Outliers)
                 groups = [df_cluster[df_cluster["cluster"] == cluster][feature] for cluster in valid_clusters]
 
                 stat, p = kruskal(*groups)
@@ -110,27 +205,27 @@ class ResultsAnalysis:
 
         # 🏆 Garantir que todos os clusters estejam no ranking
         all_clusters = set(valid_clusters)  # Todos os clusters
-        ranked_clusters = set(higher_mean_counter.keys())  # Apenas os que tiveram alguma vitória
+        ranked_clusters = set(higher_mean_counter.keys())  # Apenas os que tiveram alguma média maior que os demais
 
-        # Encontrar os clusters que nunca venceram (devem estar na última posição)
+        # Encontrar os clusters que nunca alcançaram média maior em algum atributo (devem estar na última posição)
         non_ranked_clusters = list(all_clusters - ranked_clusters)
 
-        # Criar a lista de clusters ordenada pelo número de vitórias
+        # Lista de clusters ordenada pelo número de vezes que tiveram algum atributo com média maior que os demais
         sorted_clusters = sorted(higher_mean_counter.items(), key=lambda x: x[1], reverse=True)
         cluster_ranking = [cluster for cluster, _ in sorted_clusters]
 
-        # Adicionar os clusters que nunca venceram ao final da lista
+        # Adicionar os clusters que nunca tiveram média maior ao final da lista
         cluster_ranking.extend(non_ranked_clusters)
 
-        # 📊 Exibir médias e medianas de cada cluster antes da definição do perfil SRL
-        print("\n📊 **Mean and Median Values by Cluster**")
+        # Exibindo médias e medianas de cada cluster antes da definição do perfil SRL
+        print("\n**Mean and Median Values by Cluster**")
         for cluster, stats in cluster_stats.items():
             print(f"\nCluster {cluster}:")
             print(f"   - Mean:\n{stats['mean']}")
             print(f"   - Median:\n{stats['median']}")
 
         # 🏆 Exibir a hierarquia dos clusters (SRL e demais)
-        print("\n🏆 **Final Cluster Ranking (From SRL to Lowest)**")
+        print("\n **Final Cluster Ranking (From SRL to Lowest)**")
         if len(cluster_ranking) == 2:
             print(f"   1. Cluster {cluster_ranking[0]} → SRL Profile")
             print(f"   2. Cluster {cluster_ranking[1]} → No SRL Profile")
@@ -143,129 +238,9 @@ class ResultsAnalysis:
                 else:
                     label = f"SRL Profile - Level {position}"
                 print(f"   {position}. Cluster {cluster} → {label}")
-
-    def statisticalSignificance(self, dataframe, significance_level):
-        #remover os atributos identificadores
-        df_cluster = self.removeIdentifierColumns(dataframe)
-        #encontrando a quantidade de clusters
-        unique_clusters = df_cluster["cluster"].unique()
-        valid_clusters = [c for c in unique_clusters if c != -1]
-
-        if len(unique_clusters) == 2:
-            print(f'** Two clusters were found; therefore, we will apply the Mann-Whitney U test. **')
-
-            # Buscando os labels dos clusters
-            cluster_a, cluster_b = unique_clusters
-
-            df_cluster_a = df_cluster[df_cluster['cluster'] == cluster_a]
-            df_cluster_b = df_cluster[df_cluster['cluster'] == cluster_b]
-
-            # aplicação do teste de mannwhitney
-            mannwhitney_results = {}
-
-            for column in df_cluster.columns[:-1]:  # Excluindo a coluna 'cluster'
-                stat, p_value = stats.mannwhitneyu(df_cluster_a[column], df_cluster_b[column])
-                mannwhitney_results[column] = {'U statistic': stat, 'p-value': p_value}
-
-            # mostrando os resultados
-            df_results = pd.DataFrame(mannwhitney_results).T
-            print(f'\nStatistical Results:\n{df_results}')
-
-            # Interpretação
-            print("\nInterpretation of Results:")
-            for column, values in mannwhitney_results.items():
-                p_value = values['p-value']
-                if p_value < significance_level:
-                    print(f" - {column}: ✨ Significant difference between clusters (p-value={p_value:.4f})")
-                else:
-                    print(f" - {column}: ✅ No significant difference between clusters (p-value={p_value:.4f})")
-
-        elif len(valid_clusters)>2:
-            print(f'** More than two clusters were found; therefore, we will apply the Kruskal-Wallis test and the Dunn test. **')
-
-            # Counter to track which cluster appears most frequently in significant differences
-            difference_counter = defaultdict(int)
-
-            # Filter valid clusters (removing -1 if present)
-            valid_clusters = [cluster for cluster in df_cluster["cluster"].unique() if cluster != -1]
-
-            # Loop through numerical features to apply statistical tests
-            for feature in df_cluster.columns[:-1]:  # Excluding the 'cluster' column
-                print(f"\n🔹 Testing attribute: {feature}")
-
-                # Separating values by cluster (only valid clusters)
-                groups = [df_cluster[df_cluster["cluster"] == cluster][feature] for cluster in valid_clusters]
-
-                # Step 1: Kruskal-Wallis Test
-                stat, p = stats.kruskal(*groups)
-                print(f"   - H Statistic = {stat:.4f}, p-value = {p:.4f}")
-
-                # If a significant difference is found (p < 0.05), apply Dunn's test
-                if p < significance_level:
-                    print("   ✨ Statistically significant difference found! Applying Dunn's test...")
-
-                    # 📌 Step 2: Dunn's Test for multiple comparisons (only valid clusters)
-                    df_filtered = df_cluster[df_cluster["cluster"].isin(valid_clusters)]
-                    dunn_results = sp.posthoc_dunn(df_filtered, val_col=feature, group_col='cluster', p_adjust='bonferroni')
-
-                    print("   🔍 Dunn's Test Results (adjusted p-values):")
-                    print(dunn_results)
-
-                    # 🔹 Counting how often each cluster appears in significant differences
-                    for i, row in enumerate(dunn_results.index):
-                        for j, col in enumerate(dunn_results.columns):
-                            if i < j:  # Avoid duplicate comparisons
-                                p_dunn = dunn_results.loc[row, col]
-                                if p_dunn < significance_level:
-                                    print(f"    Cluster {row} is significantly different from Cluster {col} (p = {p_dunn:.4f})")
-                                    difference_counter[row] += 1
-                                    difference_counter[col] += 1
-                else:
-                    print("   ✅ No significant differences between clusters for this feature.")
-
-            # 🔹 Displaying the clusters most frequently found as different
-            print("\n📊 **Summary: Clusters that appeared most frequently as different**")
-            sorted_clusters = sorted(difference_counter.items(), key=lambda x: x[1], reverse=True)
-            for cluster, count in sorted_clusters:
-                print(f"   - Cluster {cluster}: {count} occurrences of significant difference")
-        else: 
-            print("❌ Error: At least two clusters are required to perform a statistical significance test.")
-
-    def plotGraphicClusters(self, dataframe, rows, columns,type_graphic, path):
-        print('método para criar e salvar os boxplot de comparação dos dois clusters')
-        numeric_columns = dataframe.columns[1:-1]
-
-        # Criar novo DataFrame sem colunas desnecessárias
-        df_cluster = dataframe.drop(columns=['iduser'])
-
-        # Garantir que apenas as colunas numéricas sejam usadas, excluindo 'cluster'
-        list_columns = [col for col in df_cluster.columns if col != 'cluster']
-
-        # Configurar a grade do gráfico
-        plt.figure(figsize=(16, 8))  # Ajustando o tamanho da figura
-        num_subplots = len(list_columns)  # Definir o número correto de subgráficos
-
-        # Criar os boxplots
-        for i, col in enumerate(list_columns, 1):  # Agora, 'cluster' não será incluído
-            plt.subplot(rows, columns, i)
-            if(type_graphic=='boxplot'):
-                sns.boxplot(x='cluster', y=col, data=df_cluster, hue='cluster', palette="Set2", legend=False)
-            elif(type_graphic=='violinplot'):
-                sns.violinplot(x='cluster', y=col, data=df_cluster, hue='cluster', palette="Set2", legend=False)
-            elif(type_graphic=='stripplot'):
-                sns.stripplot(x='cluster', y=col, data=df_cluster, hue='cluster', palette="Set2", legend=False)
-            elif(type_graphic=='density'):
-                sns.kdeplot(data=df_cluster, x=col,hue='cluster',fill=True, common_norm=False, palette="Set2")
-            else:
-                print('Unsupported chart type!\nChoose: boxplot, violinplot, stripplot or density to generate the plot')
-            plt.title(col)  # Adiciona título para melhor visualização
-
-        plt.tight_layout()
-        plt.savefig(path+self.algorithm+type_graphic+'.png')
-        print(f'{type_graphic} for {self.algorithm} algorithm saved in {path}')
-        plt.show()
         
-
+    #MÉTODO_6 -> Método para mostrar a descrição dos clusters segundo a definição de SRL Profile
+    # Neste método são consideradas as notas em forma de conceito A, B e C de acordo com a definição do artigos e tese
     def profileSRLdescription(self, dataframe, fileGrade, separatorFileGrade):
         #chamando métodos de checagem de perfil SRL dentre os dois clusters considerando media e mediana maior com diferença estatística
         self.checkProfileSRL(dataframe)
@@ -317,7 +292,7 @@ class ResultsAnalysis:
             print(f"   Students with C Status = {c_count} ({c_pct:.2f}%)")
             print("-"*40)
 
-        
+    #MÉTODO_7 --> Método para destacar a descrição dos perfis SRL em formato de gráfico de barras
     def profileSRLGraphics(self, dataframe, fileGrade, separatorFileGrade, path):
         dfGrade = pd.read_csv(fileGrade, delimiter=separatorFileGrade)
         #Caso a coluna grade seja do tipo object, ou seja, formato "9,6", converte-se para padrão 9.6
@@ -343,13 +318,13 @@ class ResultsAnalysis:
         # Contar a frequência de cada conceito em cada cluster
         concept_counts = df2.groupby(['cluster', 'status']).size().unstack(fill_value=0)
 
-        # Convert frequencies to percentages
+        # Convertendo as frequências em porcentagens
         concept_percentages = concept_counts.div(concept_counts.sum(axis=1), axis=0) * 100
 
-        # Define custom colors for each concept
+        # Definindo as cores do gráfico
         colors = ['#1f77b4', '#aec7e8', '#ffbb78']  # Dark blue, light blue, light orange
 
-        # Create a stacked horizontal bar chart with custom colors
+        # Criando um gráfico de barras horizontais
         concept_percentages.plot(kind='barh', stacked=True, figsize=(10, 6), color=colors)
 
         plt.title('Percentage of Students by Grade in Each Cluster')
@@ -359,9 +334,43 @@ class ResultsAnalysis:
         plt.legend(title='Grade')
         plt.grid(axis='x', linestyle='--', alpha=0.7)
 
-        # Display the chart
+        # Salvando e mostrando o gráfico na tela
         plt.savefig(path+self.algorithm+'_profileSRL.png')
         print(f'Profile SRL Graphic for {self.algorithm} algorithm saved in {path}')
         plt.show()
     
-    
+
+    #MÉTODO_8 -> Método para criar vários tipos de gráficos de comparação dos cluster por atributos 
+    def plotGraphicClusters(self, dataframe, rows, columns,type_graphic, path):
+        print('método para criar e salvar os boxplot de comparação dos dois clusters')
+        numeric_columns = dataframe.columns[1:-1]
+
+        # Criar novo DataFrame sem colunas desnecessárias
+        df_cluster = dataframe.drop(columns=['iduser'])
+
+        # Garantir que apenas as colunas numéricas sejam usadas, excluindo 'cluster'
+        list_columns = [col for col in df_cluster.columns if col != 'cluster']
+
+        # Configurar a grade do gráfico
+        plt.figure(figsize=(16, 8))  # Ajustando o tamanho da figura
+        num_subplots = len(list_columns)  # Definir o número correto de subgráficos
+
+        # Criar os gráficos
+        for i, col in enumerate(list_columns, 1):  # Agora, 'cluster' não será incluído
+            plt.subplot(rows, columns, i)
+            if(type_graphic=='boxplot'):
+                sns.boxplot(x='cluster', y=col, data=df_cluster, hue='cluster', palette="Set2", legend=False)
+            elif(type_graphic=='violinplot'):
+                sns.violinplot(x='cluster', y=col, data=df_cluster, hue='cluster', palette="Set2", legend=False)
+            elif(type_graphic=='stripplot'):
+                sns.stripplot(x='cluster', y=col, data=df_cluster, hue='cluster', palette="Set2", legend=False)
+            elif(type_graphic=='density'):
+                sns.kdeplot(data=df_cluster, x=col,hue='cluster',fill=True, common_norm=False, palette="Set2")
+            else:
+                print('Unsupported chart type!\nChoose: boxplot, violinplot, stripplot or density to generate the plot')
+            plt.title(col)  # Adiciona título para melhor visualização
+
+        plt.tight_layout()
+        plt.savefig(path+self.algorithm+type_graphic+'.png')
+        print(f'{type_graphic} for {self.algorithm} algorithm saved in {path}')
+        plt.show()

@@ -6,6 +6,7 @@ class MinimalDataset:
         self.separator = separator
         self.generation_method = generation_method
     
+    #MÉTODO 1 -> Método para analise de logs segundo o tipo de log enviado "SQL", "MOODLE", "MOODLE_PYTHON"
     def log_analysis(self):
         print(f'Data Generation Method: {self.generation_method}')
         print('\n--------- Dataframe Informartion ---------------\n')
@@ -59,6 +60,9 @@ class MinimalDataset:
 
         print('\n--------------- Logs successfully quantified and transformed into dataframe ----------------\n')
 
+    #MÉTODO 2 --> Método para mapeamento de logs para estratégias SRL
+    # atualmente temos dicionário que faz o mapeamento, o ideal é ter arquivos pré-definidos para buscar o mapeamento
+    # verificar anotação no caderno
     def mappingToSRL(self, dataframe):
         # Copiando as colunas iduser e firtname
         new_df = dataframe[['iduser', 'name']].copy()
@@ -106,6 +110,7 @@ class MinimalDataset:
         print(f'Log mapping in SRL strategies completed!')
         return new_df
     
+    #MÉTODO 3 --> Faz a conversão do padrão de tempo de relatório do configurable reports para número inteiro
     def converToSeconds(self, tempo_str):
         # Inicializando as variáveis
         horas, minutos, segundos = 0, 0, 0
@@ -132,6 +137,7 @@ class MinimalDataset:
     
         return total_segundos
 
+    # MÉTODO 4 --> realiza a junção do dataframe pós mapeamento com o arquivo de tempo enviado pelo ususário
     def joinTime(self, fileTime, dataframe):
         print("Método para junção com tempo de acesso, se necessário")   
         df_time = pd.read_csv(fileTime, delimiter=",")
@@ -160,10 +166,12 @@ class MinimalDataset:
             df_final = pd.merge(dataframe, df_time, on='name', how='inner')
             return df_final
 
+    #MÉTODO 5 --> Método para carregar e retornar um dataframe com notas do usuário
     def loadGrades(self, fileGrade):
         df_grade = pd.read_csv(fileGrade, delimiter=",")
         return df_grade
 
+    #MÉTODO 6 --> Vari receber um dataframe e salvar em arquivo .csv; deve ser chamado após método de log analise, mapeamento e jointime
     def generateMinimalDataset(self,path, dataframe):
         dataframe.to_csv(path+'generaldataset_'+self.generation_method+'.csv', sep=';', encoding='utf-8', index=False)
         print(f"MinimalDataset saved in {path}")

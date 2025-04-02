@@ -24,6 +24,7 @@ class Clustering:
         self.algorithm = algorithm
         self.path = path
 
+    #MÉTODO 1 -> Remove identificadores se houver
     def removeIdentifierColumns(self, dataframe):
         # Colunas a remover
         remove_columns = ['iduser','name']
@@ -33,6 +34,7 @@ class Clustering:
             dataframe = dataframe.drop(columns=existing_columns)
         return dataframe
 
+    #MÉTODO 2 -> Cria o dendograma do HDBSCAN para melhora análise de parâmetros de entrada do algoritmo (min_samples e min_cluster_size)
     def dendogram_hdbscan(self, dataframe):
         df = self.removeIdentifierColumns(dataframe)
         clusterer = hdbscan.HDBSCAN(min_samples=10, min_cluster_size=20)
@@ -46,6 +48,7 @@ class Clustering:
         print(f'Condensation Dendrogram - HDBSCAN saved in {self.path}')
         plt.show()
             
+    #MÉTODO 3 -> Realiza aplicação do algoritmo HBDSCAN a partir de uma lista de valores de min_samples e min_cluster_sizes enviadas por parâmetro e mostra ao usuário qual parâmetro produziu melhores resultados
     def analysisMeasuresHDBSCAN(self, dataframe, min_samples_values, min_cluster_size_values):
         #método recebe o dataframe e duas listas com valores de min-samples e min-cluster-sizes
         df = self.removeIdentifierColumns(dataframe)
@@ -78,6 +81,7 @@ class Clustering:
         #retorna uma tupla onde o primeiro valor é o min_samples e o segundo é o min_cluster_size
         return best_params
 
+    #MÉTODO 4 - Aplica o algoritmo K-Means e verificar o melhor valor K segundo a análise do silhoutte score
     def bestValueK_SilhouetteScores(self,dataframe):
         df = self.removeIdentifierColumns(dataframe)
         k_values = range(2, 11)
@@ -105,6 +109,8 @@ class Clustering:
         print("The best K value for K-Means, based on the Silhouette Score, is:", best_k)
         return best_k
     
+    #MÉTODO 5 - Aplica o algoritmo k-means e verifica o melhor valor K segundo o método curva de cotovelo
+    # Tanto este método, quando o anterior vão retornar o valor k para uma variável. O usuário deve analisar ambos os resultados para verificar se estão em comum acordo
     def bestValueK_Elbow(self, dataframe):
         df = self.removeIdentifierColumns(dataframe)
         # Define o intervalo de valores para K
@@ -141,6 +147,8 @@ class Clustering:
         print("The best K value for K-Means, based on the Elbow Method, is:", best_k)
         return best_k
 
+    #MÉTODO 6 -> Aplicar-se o algoritmo agglomerative e analisa o melhor valor k segundo a silhueta
+    # Aqui, o usuário também deve analisar o valor retornado e a imagem do dendograma gerado para verificar se convergem
     def bestValueK_forAgglomerative(self, dataframe):
         df = self.removeIdentifierColumns(dataframe)
         # Criar o linkage para o dendrograma
@@ -187,6 +195,7 @@ class Clustering:
         print("The best K value for Agglomerative Clustering, based on the Silhouette Score, is:", best_k)
         return best_k
 
+    #MÉTODO 7 -> Medida de validação interna do cluster
     def dunn_index(self, X, labels):
         unique_clusters = np.unique(labels)
         if len(unique_clusters) < 2:
@@ -214,6 +223,7 @@ class Clustering:
         max_intra = np.max(intra_dists)
         return min_inter / max_intra
 
+    #MÉTODO 8 -> Outras medidas de validação internas dos clusters
     def internalValidation(self, labels, dataframe):
         silh = silhouette_score(dataframe, labels)
         calin = calinski_harabasz_score(dataframe, labels)
@@ -221,6 +231,7 @@ class Clustering:
         dunn = self.dunn_index(dataframe, labels)
         print(f'\n Silhuotte: {silh}\n Calinski: {calin}\n Davies-Bouldin: {db_score}\n Dunn-Index: {dunn}')
 
+    #MÉTODO 9 -> Método para salvar o cluster em uma arquivo no formato csv.
     def saveClustering(self,dataframe,name):
         dataframe.to_csv(self.path+name+'.csv', sep=';', encoding='utf-8', index=False)
         print(f"\n File Clustering saved in {self.path}")
@@ -229,6 +240,7 @@ class Clustering:
         print('\n--------------------Dataframe após clustering!--------------------')
         print(dataframe.head())
 
+    #MÉTODO 10 --> Aplicação do algoritmo k-means com o valor k enviado por parâmetro
     def kmeans(self, dataframe, valueK):
         df = self.removeIdentifierColumns(dataframe)
 
@@ -248,6 +260,7 @@ class Clustering:
         name = self.algorithm+'_'+str(valueK)
         self.saveClustering(dataframe,name)
         
+    #MÉTODO 11 --> Aplicação do algoritmo Agglomerative com o número de clusters enviado por parâmetro
     def agglomerative(self, dataframe,  numberClusters):
         df = self.removeIdentifierColumns(dataframe)
 
@@ -265,7 +278,8 @@ class Clustering:
         dataframe['cluster'] = df['cluster']
         name = self.algorithm+'_'+str(numberClusters)
         self.saveClustering(dataframe,name)
-        
+
+    #MÉTODO 12 -> Aplicação do algoeitmo HDBSCAN com os dois parâmetros de entrada definidos 
     def hdbscan(self, dataframe, value_min_samples, value_min_cluster_size):
         df = self.removeIdentifierColumns(dataframe)
 
@@ -291,7 +305,7 @@ class Clustering:
         name = self.algorithm+'_'+str(num_clusters)
         self.saveClustering(dataframe,name)
         
-
+    #MÉTODO 13 --> Aplicação do algoritmo dbscan (não foram feitos muitos testes, pois os dados não geram clusters com esse algoritmo)
     def dbscan(self, dataframe, value_eps, value_minsamples):
         df = self.removeIdentifierColumns(dataframe)
 
@@ -316,7 +330,7 @@ class Clustering:
         name = self.algorithm+'_'+str(n_clusters)
         self.saveClustering(dataframe,name)
         
-    
+    #MÉTODO 14 -> Aplicação do algoritmo EM (não foram feitos muitos testes, pois os dados dão resultados bem ruins com esse algoritmo)
     def gaussian(self, dataframe,n_clusters):
         df = self.removeIdentifierColumns(dataframe)
 

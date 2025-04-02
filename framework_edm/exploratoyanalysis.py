@@ -11,18 +11,23 @@ class ExploratoryAnalysis:
         self.path_sheet = path_sheet
         self.separator = separator
 
+
+    #MÉTODO 1 -> Carregando o dataframe a partir do arquivo enviano no momento da criação do objeto (construtor)
     def loadDataframe(self):
         df = pd.read_csv(self.path_sheet, delimiter=self.separator)
         return df
 
+    #MÉTODO 2 -> Retornando informações do dataframe
     def informationData(self, dataframe):
         return dataframe.info()
 
+    #MÉTODO 3 -> Retornando descrições estatísticas do dataframe
     def statisticalDescription(self, dataframe):
         if 'name' in dataframe.columns:
             dataframe.drop('name', axis=1, inplace=True)
         return dataframe.describe()
     
+    #MÉTODO 4 -> Criando a matriz de correlação de Spearman -> quando os dados nao seguem uma distribuição normal
     def createSpearmanMatrix(self, dataframe, path):
         # Colunas a remover
         remove_columns = ['iduser', 'name']
@@ -46,11 +51,16 @@ class ExploratoryAnalysis:
         print(f'Spearman Correlation Matrix saved in {path}')
         plt.show()
     
-    # Função para aplicar o teste Kolmogorov-Smirnov
+
+    # MÉTODO 5 -> Aplica o teste de normalidade de dados do Kolmogorov Smirnov
+    # Ideal para amostras acima de 5000 registros
+    
     def aplicar_kstest(self, coluna):
         estatistica, p_valor = kstest(coluna, 'norm')
         return estatistica, p_valor
 
+    # MÉTODO 6 -> Faz a chamada do teste de normalidade 
+    # Para dados abaixo de 5000 --> aplicar Shapiro Wilk (verificar se não preciso implementar este), talvez passar por parametro "shapiro", "smirnov" e "anderson" para escolha um dos testes
     def applyNormalityTest(self, dataframe):
         #if 'iduser' in dataframe.columns:
             #dataframe.drop('iduser', axis=1, inplace=True)
