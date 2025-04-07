@@ -18,9 +18,9 @@ class MinimalDataset:
             #quantificando logs e transformando cada evento encontrando em uma coluna do novo dataframe
             pivot_df_sgbd = df_sgbd.pivot_table(index=['iduser','name'], columns='eventname', aggfunc='size', fill_value=0)
             
-            #transformando os nomes dos eventos no padrão com _ ao invés de barra
+            #transformando os nomes dos eventos no padrão de uma única barra
             loglist = pivot_df_sgbd.columns.tolist()
-            new_list = [item.replace("\\\\", "_").replace("_event_", "_").strip("'") for item in loglist]
+            new_list = [item.replace("\\\\", '\\').strip("'") for item in loglist]
             pivot_df_sgbd.columns = new_list
             
             # resentando o index do dataframe
@@ -60,10 +60,48 @@ class MinimalDataset:
 
         print('\n--------------- Logs successfully quantified and transformed into dataframe ----------------\n')
 
+
+    #MÉTODO 2 -->   Realiza a criação do dataframe a partir de um CSV contendo o mapeamento de logs em estratégias SRL pré-definido
+    def mappingToSRL(self, dataframe, filedescription):
+        # Lê o CSV com separador ';'
+        df = pd.read_csv(filedescription, sep=';')
+
+        # Filtra os registros onde 'excluded' é 0
+        df_filtrado = df[df['excluded'] == 0]
+
+        # Agrupa os logs por estratégia
+        srl_dict = df_filtrado.groupby('srl_estrategy')['event_log'].apply(list).to_dict()
+
+        new_df = dataframe[['iduser', 'name']].copy()
+        # Realizando a soma das colunas de acordo com o mapeamento
+        for attribute, columns in srl_dict.items():
+            new_df[attribute] = dataframe[columns].sum(axis=1)
+
+        # Resetando o index
+        new_df = new_df.reset_index(drop=True)
+
+        print(f'Log mapping in SRL strategies completed!')
+
+        # Renomeando colunas com uma linha só
+        new_df.columns = [
+            re.sub(r'_+', '_', re.sub(r'\s+', '_', col.lower().replace('and', '').replace('-', '_'))).strip('_')
+            for col in new_df.columns
+        ]
+
+        return new_df
+       # print(f'Log mapping in SRL strategies completed!')
+       # return new_df
+        # Exibe o dicionário
+       # for estrategia, logs in srl_dict.items():
+       #     print(f"{estrategia}:")
+       #     for log in logs:
+       #         print(f"  - {log}")
+
+                
     #MÉTODO 2 --> Método para mapeamento de logs para estratégias SRL
     # atualmente temos dicionário que faz o mapeamento, o ideal é ter arquivos pré-definidos para buscar o mapeamento
     # verificar anotação no caderno
-    def mappingToSRL(self, dataframe):
+    def mappingToSRLAntigo(self, dataframe):
         # Copiando as colunas iduser e firtname
         new_df = dataframe[['iduser', 'name']].copy()
         mapping_srl = {}

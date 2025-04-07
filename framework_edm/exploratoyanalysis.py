@@ -1,10 +1,10 @@
 import pandas as pd
 import numpy as np
-from scipy import stats
+#from scipy import stats
 import os
 import seaborn as sns
 import matplotlib.pyplot as plt
-from scipy.stats import kstest
+#from scipy.stats import kstest
 import scipy.stats as stats
 
 class ExploratoryAnalysis:
