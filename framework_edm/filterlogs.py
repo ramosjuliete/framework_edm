@@ -24,44 +24,39 @@ class FilterLogs():
     #MÉTODO 3 --> método para filtrar os logs dos usuários estudantes para relatórios de moodle do IF
     # verificar questões de como generalizar as colunas de nome, identificação, etc
     # Talvez buscar o cabeçalho da planilha e trabalhar com ele, ao invés dos nomes colocados manualmente
-    def logfilltering(self, fileStudents, separatorStudents, logPathDestination):
+    #columnGeneral -> Parametro que indica no arquivo de logs qual a coluna do nome do usuário
+    #columnFilter -> Parametro que indica no arquivo de estudantes qual a coluna devo usar para filtrar os logs dos nomes dos estudantes
+    #columnDescription -> parametro que indica qual coluna contém a descrição do evento para extrair o id do usuário
+    def logfilltering(self, columnGeneral, columnFilter, columnDescription, fileStudents, logPathDestination):
         dfLogs = pd.read_csv(self.path_sheet, delimiter=self.separator)
  
-        dfStudents = pd.read_csv(fileStudents, delimiter=separatorStudents)
+        dfStudents = pd.read_csv(fileStudents)
 
-        df_filterlogs = dfLogs[dfLogs['nome'].isin(dfStudents['Nome'])]
+        df_filterlogs = dfLogs[dfLogs[columnGeneral].isin(dfStudents[columnFilter])]
 
-        print(df_filterlogs.info())
 
         # Aplicar a função à coluna "Descrição" e criar a nova coluna "id_user"
-        df_filterlogs["id_usuario"] = df_filterlogs["descricao"].apply(self.extract_id_user)
-
-        uniqueEvents = df_filterlogs['nome_evento'].unique().tolist()
-
-        translated_events = self.translate_list(uniqueEvents)
-
-        df_filterlogs['nome_evento'] = df_filterlogs['nome_evento'].replace(translated_events)
-        df_filterlogs['nome_evento'] = df_filterlogs['nome_evento'].replace('Course', 'Course Viewed')
+        df_filterlogs["id_usuario"] = df_filterlogs[columnDescription].apply(self.extract_id_user)
 
         #antes de salvar padronizar as colunas em inglês
-        traducoes = {
-            "hora": "hour",
-            "nome": "name",
-            "usuario_afetado": "affected_user",
-            "contexto_evento": "event_context",
-            "componente": "component",
-            "nome_evento": "event_name",
-            "descricao": "description",
-            "origem": "origin",
-            "ip": "ip",
-            "id_usuario": "iduser"
-        }
+       # traducoes = {
+       #     "hora": "hour",
+        #    "nome_completo": "name",
+       #     "usuario_afetado": "affected_user",
+       #     "contexto_evento": "event_context",
+       #     "componente": "component",
+        #    "nome_evento": "event_name",
+        #    "descricao": "description",
+       #     "origem": "origin",
+       #     "ip": "ip",
+        #    "id_usuario": "iduser"
+        #}
 
-        df_filterlogs.rename(columns=traducoes, inplace=True)
+        #df_filterlogs.rename(columns=traducoes, inplace=True)
+        #print(df_filterlogs.head())
+        fileSaved = logPathDestination+'logMoodleFilteredNovo.csv'
 
-        fileSaved = logPathDestination+'logMoodleFiltered.csv'
-
-        print(f'File logMoodleFiltered.csv saved in: {logPathDestination}')
+        print(f'File logMoodleFilteredNovo.csv saved in: {logPathDestination}')
 
         df_filterlogs.to_csv(fileSaved, index=False) 
 

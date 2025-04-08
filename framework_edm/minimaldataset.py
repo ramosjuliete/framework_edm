@@ -1,78 +1,87 @@
 import pandas as pd
 import re
 class MinimalDataset:
-    def __init__(self, path_sheet, separator, generation_method):
-        self.path_sheet = path_sheet
-        self.separator = separator
+    def __init__(self, generation_method, fileDescriptionSRL):
         self.generation_method = generation_method
+        self.fileDescriptionSRL = fileDescriptionSRL
     
-    #MÉTODO 1 -> Método para analise de logs segundo o tipo de log enviado "SQL", "MOODLE", "MOODLE_PYTHON"
-    def log_analysis(self):
+    #MÉTODO 1 --> método para extrair o id do usuário da coluna descrição
+    def extract_id_user(self,description):
+        match = re.search(r"user with id '(\d+)'", description)
+        if match:
+            return match.group(1)  # Retorna o ID capturado
+        return None  # Retorna None se não encontrar um ID
+    
+    #método para filtrar os logs, caso o tipo de método de geração for MOODLE ou MOODLE PYTHON, uma vez que o relatório de logs gerado pelo ambiente Moodle não separa estudantes, professores, administradores
+    def logfilltering(self, fileLogs, fileLogsDelimiter, columnGeneral, columnDescription, fileStudents, columnFilter, logPathDestination):
+        dfLogs = pd.read_csv(fileLogs, delimiter=fileLogsDelimiter)
+ 
+        #leitura do arquivo que contem os nomes completos dos estudantes conforme nome destacado no relatório de logs
+        dfStudents = pd.read_csv(fileStudents)
+
+        #filtrando os logs dos estudantes do relatório completo de logs
+        df_filterlogs = dfLogs[dfLogs[columnGeneral].isin(dfStudents[columnFilter])]
+
+        # Aplicar a função à coluna "Descrição" e criar a nova coluna "id_user"
+        df_filterlogs["iduser"] = df_filterlogs[columnDescription].apply(self.extract_id_user)
+
+        fileSaved = logPathDestination+'logMoodleFiltered.csv'
+
+        print(f'File logMoodleFiltered.csv saved in: {logPathDestination}')
+
+        df_filterlogs.to_csv(fileSaved, index=False)
+
+
+    #MÉTODO  -> Método para analise de logs segundo o tipo de log enviado "SQL", "MOODLE", "MOODLE_PYTHON"
+    # retorna um dataframe onde cada coluna é um log e os valores é a quantidade de vezes que aquele log aparece
+    def log_analysis(self, fileLogs, fileLogsDelimiter, columnIdentifier, columnLogEvent):
         print(f'Data Generation Method: {self.generation_method}')
         print('\n--------- Dataframe Informartion ---------------\n')
-        if(self.generation_method=='SQL'):
-            #leitura do arquivo e print das informações do dataframe
-            df_sgbd = pd.read_csv(self.path_sheet, delimiter=self.separator)
-            print(df_sgbd.info())
+        df_logs = pd.read_csv(fileLogs, delimiter=fileLogsDelimiter)
+        print(df_logs.info())
+        #quantificando logs e transformando cada evento encontrando em uma coluna do novo dataframe
+        pivot_df_logs = df_logs.pivot_table(index=[columnIdentifier], columns=columnLogEvent, aggfunc='size', fill_value=0)
 
-            #quantificando logs e transformando cada evento encontrando em uma coluna do novo dataframe
-            pivot_df_sgbd = df_sgbd.pivot_table(index=['iduser','name'], columns='eventname', aggfunc='size', fill_value=0)
-            
+        if(self.generation_method=='SQL'):
             #transformando os nomes dos eventos no padrão de uma única barra
-            loglist = pivot_df_sgbd.columns.tolist()
+            loglist = pivot_df_logs.columns.tolist()
             new_list = [item.replace("\\\\", '\\').strip("'") for item in loglist]
-            pivot_df_sgbd.columns = new_list
-            
-            # resentando o index do dataframe
-            pivot_df_sgbd = pivot_df_sgbd.reset_index()
-            return pivot_df_sgbd
+            pivot_df_logs.columns = new_list
+            pivot_df_logs = pivot_df_logs.reset_index()
+            return pivot_df_logs
 
         elif(self.generation_method=='MOODLE'):
-            df_moodle = pd.read_csv(self.path_sheet, delimiter=self.separator)
-            print(df_moodle.info())
-
-            #quantificando logs e transformando cada evento encontrando em uma coluna do novo dataframe
-            pivot_df_moodle = df_moodle.pivot_table(index=['iduser','name'], columns='event_name', aggfunc='size', fill_value=0)
-
             # Substituindo os espaços por underline e removendo os pontos no final
-            pivot_df_moodle.columns = pivot_df_moodle.columns.str.replace(' ', '_').str.rstrip('.').str.lower()
+            pivot_df_logs.columns = pivot_df_logs.columns.str.replace(' ', '_').str.rstrip('.').str.lower()
+            pivot_df_logs = pivot_df_logs.reset_index()
+            return pivot_df_logs
 
-            # resentando o index do dataframe
-            pivot_df_moodle = pivot_df_moodle.reset_index()
-            return pivot_df_moodle
-
-        elif(self.generation_method=='MOODLE_PYTHON'):
-            df_moodle = pd.read_csv(self.path_sheet, delimiter=self.separator)
-            print(df_moodle.info())
-
-            #quantificando logs e transformando cada evento encontrando em uma coluna do novo dataframe
-            pivot_df_moodle = df_moodle.pivot_table(index=['iduser','name'], columns='event_name', aggfunc='size', fill_value=0)
-
-            # Substituindo os espaços por underline e removendo os pontos no final
-            pivot_df_moodle.columns = pivot_df_moodle.columns.str.replace(' ', '_').str.rstrip('.').str.lower()
-
-            # resentando o index do dataframe
-            pivot_df_moodle = pivot_df_moodle.reset_index()
-            return pivot_df_moodle
-
+        elif(self.generation_method=='MOODLE_PYTHON'):      
+            #substituir os nomes dos eventos (colunas) pelo log técnico do moodle presente no arquivo de mapeamento srl
+            df_srl = pd.read_csv(self.fileDescriptionSRL, sep=';')
+            map_eventos = dict(zip(df_srl['event_name'], df_srl['event_log']))
+            pivot_df_logs.rename(columns=map_eventos, inplace=True)
+            pivot_df_logs = pivot_df_logs.reset_index()
+            return pivot_df_logs
         else:
             print("Non-existent data generation method!")
 
         print('\n--------------- Logs successfully quantified and transformed into dataframe ----------------\n')
 
 
-    #MÉTODO 2 -->   Realiza a criação do dataframe a partir de um CSV contendo o mapeamento de logs em estratégias SRL pré-definido
-    def mappingToSRL(self, dataframe, filedescription):
+    #MÉTODO  -->   Realiza a criação do dataframe a partir de um CSV contendo o mapeamento de logs em estratégias SRL pré-definidos
+    def mappingToSRL(self, dataframe):
         # Lê o CSV com separador ';'
-        df = pd.read_csv(filedescription, sep=';')
+        df = pd.read_csv(self.fileDescriptionSRL, sep=';')
 
         # Filtra os registros onde 'excluded' é 0
+
         df_filtrado = df[df['excluded'] == 0]
 
         # Agrupa os logs por estratégia
         srl_dict = df_filtrado.groupby('srl_estrategy')['event_log'].apply(list).to_dict()
 
-        new_df = dataframe[['iduser', 'name']].copy()
+        new_df = dataframe[['iduser']].copy()
         # Realizando a soma das colunas de acordo com o mapeamento
         for attribute, columns in srl_dict.items():
             new_df[attribute] = dataframe[columns].sum(axis=1)
@@ -89,18 +98,9 @@ class MinimalDataset:
         ]
 
         return new_df
-       # print(f'Log mapping in SRL strategies completed!')
-       # return new_df
-        # Exibe o dicionário
-       # for estrategia, logs in srl_dict.items():
-       #     print(f"{estrategia}:")
-       #     for log in logs:
-       #         print(f"  - {log}")
-
+       
                 
-    #MÉTODO 2 --> Método para mapeamento de logs para estratégias SRL
-    # atualmente temos dicionário que faz o mapeamento, o ideal é ter arquivos pré-definidos para buscar o mapeamento
-    # verificar anotação no caderno
+    #MÉTODO ANTIGO --> Método para mapeamento de logs para estratégias SRL --> antes de ter o arquivo 
     def mappingToSRLAntigo(self, dataframe):
         # Copiando as colunas iduser e firtname
         new_df = dataframe[['iduser', 'name']].copy()
@@ -176,6 +176,7 @@ class MinimalDataset:
         return total_segundos
 
     # MÉTODO 4 --> realiza a junção do dataframe pós mapeamento com o arquivo de tempo enviado pelo ususário
+    # PRECISO REVER ESTE MÉTODO E REESCREVÊ-LO
     def joinTime(self, fileTime, dataframe):
         print("Método para junção com tempo de acesso, se necessário")   
         df_time = pd.read_csv(fileTime, delimiter=",")
