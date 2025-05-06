@@ -176,18 +176,20 @@ class MinimalDataset:
         return total_segundos
 
     # MÉTODO 4 --> realiza a junção do dataframe pós mapeamento com o arquivo de tempo enviado pelo ususário
-    # PRECISO REVER ESTE MÉTODO E REESCREVÊ-LO
+    # PRECISO REVER ESTE MÉTODO E REESCREVÊ-LO PARA TRABALHAR COM ID DO USUÁRIO E NAO COM O NOME NO CASO DE RELATÓRIO DE TEMPO GERADO PELO CONFIGURABLE REPORT
     def joinTime(self, fileTime, dataframe):
         print("Método para junção com tempo de acesso, se necessário")   
         df_time = pd.read_csv(fileTime, delimiter=",")
         #essa renomeação deve acontecer sempre que o arquivo tempo estiver com esquema relacional (userid, total_time_spent)
         # retirar essa linha e colocar o padrão de arquivo de tempo com (iduser, time)
         if(self.generation_method=='SQL'):
-            df_time = df_time.rename(columns={'userid': 'iduser', 'total_time_spent': 'time'})
+            #RETIRA-SE ESSA LINHA: arquivo de tempo deve ser configurado com esquema relacional: iduser, time
+            #df_time = df_time.rename(columns={'userid': 'iduser', 'total_time_spent': 'time'})
             df_final = pd.merge(dataframe, df_time, on='iduser', how='inner')
             return df_final
 
         elif(self.generation_method=='MOODLE'):
+            #essa parte precisa ser melhorada, pois o relatório de tempo do configurable report não vem com id
             df_filtrado = df_time[df_time['Nome do aluno'].isin(dataframe['name'])].drop_duplicates(subset='Nome do aluno')
 
             df_filtrado['tempo_em_segundos'] = df_filtrado['Tempo de dedicação ao curso'].apply(self.converToSeconds)
@@ -200,6 +202,7 @@ class MinimalDataset:
 
             df_final = df_junto[['iduser', 'name','seeking_social_assistance','goal_setting_planning','self_evaluation','keeping_records_monitoring','review_records','time']]
             return df_final
+
         elif(self.generation_method=='MOODLE_PYTHON'):
             df_time = df_time.rename(columns={'id': 'name', 'tempo_curso_segundos': 'time'})
             df_final = pd.merge(dataframe, df_time, on='name', how='inner')
