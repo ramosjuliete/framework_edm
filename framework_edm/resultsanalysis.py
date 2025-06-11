@@ -346,7 +346,10 @@ class ResultsAnalysis:
         numeric_columns = dataframe.columns[1:-1]
 
         # Criar novo DataFrame sem colunas desnecessárias
-        df_cluster = dataframe.drop(columns=['iduser'])
+        if 'iduser' in dataframe.columns:
+            df_cluster = dataframe.drop(columns=['iduser'])
+        else:
+            df_cluster = dataframe
 
         # Garantir que apenas as colunas numéricas sejam usadas, excluindo 'cluster'
         list_columns = [col for col in df_cluster.columns if col != 'cluster']
