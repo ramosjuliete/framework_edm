@@ -324,9 +324,23 @@ class ResultsAnalysis:
         # Definindo as cores do gráfico
         colors = ['#1f77b4', '#aec7e8', '#ffbb78']  # Dark blue, light blue, light orange
 
-        # Criando um gráfico de barras horizontais
-        concept_percentages.plot(kind='barh', stacked=True, figsize=(10, 6), color=colors)
+        # Criando o gráfico de barras horizontais empilhadas
+        ax = concept_percentages.plot(kind='barh', stacked=True, figsize=(10, 6), color=colors)
 
+        # Adicionando os rótulos de porcentagem em cada barra
+        for i, (index, row) in enumerate(concept_percentages.iterrows()):
+            cumulative_width = 0
+            for j, value in enumerate(row):
+                if value > 0:
+                    ax.text(
+                        cumulative_width + value / 2,  # posição x no meio da barra atual
+                        i,                             # posição y (linha)
+                        f'{value:.1f}%',               # texto formatado
+                        va='center', ha='center', fontsize=9, color='black'
+                    )
+                    cumulative_width += value
+
+        # Restante da personalização
         plt.title('Percentage of Students by Grade in Each Cluster')
         plt.xlabel('Percentage (%)')
         plt.ylabel('Cluster')

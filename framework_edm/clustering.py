@@ -97,7 +97,7 @@ class Clustering:
         # Plot do gráfico de Silhouette Score
         plt.figure(figsize=(8, 6))
         plt.plot(k_values, silhouette_scores, marker='o', linestyle='-')
-        plt.xlabel('umber of Clusters (K)')
+        plt.xlabel('Number of Clusters (K)')
         plt.ylabel('Silhouette Score')
         plt.title('Silhouette Score for different K values')
         plt.grid(True)
@@ -129,7 +129,7 @@ class Clustering:
 
         # Plot do Método do Cotovelo
         plt.figure(figsize=(8, 6))
-        plt.plot(k_values, inertia_values, marker='o', linestyle='-', label='Inércia (SSE)')
+        plt.plot(k_values, inertia_values, marker='o', linestyle='-', label='Intertia (SSE)')
         plt.xlabel('Number of Clusters (K)')
         plt.ylabel('Intertia (SSE)')
         plt.title('Elbow Method for determining the best value K for K-Means')
