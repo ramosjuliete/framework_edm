@@ -341,7 +341,7 @@ class ResultsAnalysis:
                     cumulative_width += value
 
         # Restante da personalização
-        plt.title('Percentage of Students by Grade in Each Cluster')
+        #plt.title('Percentage of Students by Grade in Each Cluster')
         plt.xlabel('Percentage (%)')
         plt.ylabel('Cluster')
         plt.yticks(rotation=0)
