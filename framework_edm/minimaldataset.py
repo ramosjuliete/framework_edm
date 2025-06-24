@@ -99,45 +99,7 @@ class MinimalDataset:
 
         return new_df
 
-
-    def mappingToSRL2(self, dataframe):
-        # Lê o CSV com separador ';'
-        df = pd.read_csv(self.fileDescriptionSRL, sep=';')
-
-        # Filtra os registros onde 'excluded' é 0
-        df_filtrado = df[df['excluded'] == 0]
-
-        # Agrupa os logs por estratégia
-        srl_dict = df_filtrado.groupby('srl_estrategy')['event_log'].apply(list).to_dict()
-
-        new_df = dataframe[['iduser']].copy()
-
-        # Realizando a soma das colunas de acordo com o mapeamento
-        for attribute, columns in srl_dict.items():
-            # Verifica quais colunas existem no dataframe
-            valid_columns = [col for col in columns if col in dataframe.columns]
-
-            if valid_columns:
-                new_df[attribute] = dataframe[valid_columns].sum(axis=1)
-            else:
-                # Se nenhuma coluna for válida, preenche com 0
-                new_df[attribute] = 0
-
-        # Resetando o index
-        new_df = new_df.reset_index(drop=True)
-
-        print(f'Log mapping in SRL strategies completed!')
-
-        # Renomeando colunas com uma linha só
-        new_df.columns = [
-            re.sub(r'_+', '_', re.sub(r'\s+', '_', col.lower().replace('and', '').replace('-', '_'))).strip('_')
-            for col in new_df.columns
-        ]
-
-        return new_df
-    
-       
-                
+               
     #MÉTODO ANTIGO --> Método para mapeamento de logs para estratégias SRL --> antes de ter o arquivo 
     def mappingToSRLAntigo(self, dataframe):
         # Copiando as colunas iduser e firtname
