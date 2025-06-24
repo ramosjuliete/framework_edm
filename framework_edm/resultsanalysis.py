@@ -10,6 +10,7 @@ from collections import defaultdict
 from scipy.stats import mannwhitneyu, kruskal
 import warnings
 warnings.simplefilter("ignore")
+
 class ResultsAnalysis:
 
     def __init__(self, algorithm,  fileCluster, separatorFileCluster):
