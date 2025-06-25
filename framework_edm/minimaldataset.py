@@ -209,9 +209,17 @@ class MinimalDataset:
             return df_final
 
     #MÉTODO 5 --> Método para carregar e retornar um dataframe com notas do usuário
-    def loadGrades(self, fileGrade):
-        df_grade = pd.read_csv(fileGrade, delimiter=",")
-        return df_grade
+    def structureTime(self, path, fileLogs, fileLogsDelimiter, fileTime, fileTimeDelimiter):
+        #esquema do fileLog: #ESQUEMA: hour,name,affected_user,event_context,component,event_name,description,origin,ip,iduser
+        df_logs = pd.read_csv(fileLogs, delimiter=fileLogsDelimiter)
+        #esquema do fileTime: name	time
+        df_time = pd.read_csv(fileTime, delimiter=fileTimeDelimiter)
+        #Esquema do file final precisa ser: iduser, time
+        df_merge = pd.merge(df_logs, df_time, on='name', how='inner')
+        df_final = df_merge[['iduser', 'time']]
+        df_final.to_csv(path+'time'+self.generation_method+'.csv', sep=';', encoding='utf-8', index=False)
+        print(f"File Time saved in {path}")
+
 
     #MÉTODO 6 --> Vari receber um dataframe e salvar em arquivo .csv; deve ser chamado após método de log analise, mapeamento e jointime
     def generateMinimalDataset(self,path, dataframe):
