@@ -210,18 +210,26 @@ class MinimalDataset:
 
     #MÉTODO 5 --> Método para carregar e retornar um dataframe com notas do usuário
     def structureTime(self, path, fileLogs, fileLogsDelimiter, fileTime, fileTimeDelimiter):
-        #esquema do fileLog: #ESQUEMA: hour,name,affected_user,event_context,component,event_name,description,origin,ip,iduser
+        # Lê os arquivos CSV de log e de tempo
         df_logs = pd.read_csv(fileLogs, delimiter=fileLogsDelimiter)
-        #esquema do fileTime: name	time
         df_time = pd.read_csv(fileTime, delimiter=fileTimeDelimiter)
-        #Esquema do file final precisa ser: iduser, time
+
+        # Faz o merge entre os dois DataFrames com base na coluna 'name'
         df_merge = pd.merge(df_logs, df_time, on='name', how='inner')
-        df_final = df_merge[['iduser', 'time']]
-        df_final.to_csv(path+'time'+self.generation_method+'.csv', sep=';', encoding='utf-8', index=False)
-        print(f"File Time saved in {path}")
+
+        # Seleciona apenas as colunas 'iduser' e 'time', removendo duplicatas
+        df_final = df_merge[['iduser', 'time']].drop_duplicates().reset_index(drop=True)
+
+        # Gera o caminho completo do arquivo de saída
+        output_file = f"{path}time{self.generation_method}.csv"
+
+        # Salva o DataFrame final em CSV
+        df_final.to_csv(output_file, sep=';', encoding='utf-8', index=False)
+
+        print(f"File Time saved in {output_file}")
 
 
-    #MÉTODO 6 --> Vari receber um dataframe e salvar em arquivo .csv; deve ser chamado após método de log analise, mapeamento e jointime
+    #MÉTODO 6 --> Vai receber um dataframe e salvar em arquivo .csv; deve ser chamado após método de log analise, mapeamento e jointime
     def generateMinimalDataset(self,path, dataframe):
         dataframe.to_csv(path+'generaldataset_'+self.generation_method+'.csv', sep=';', encoding='utf-8', index=False)
         print(f"MinimalDataset saved in {path}")
