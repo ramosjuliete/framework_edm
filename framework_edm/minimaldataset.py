@@ -1,9 +1,8 @@
 import pandas as pd
 import re
 class MinimalDataset:
-    def __init__(self, generation_method, fileDescriptionSRL):
+    def __init__(self, generation_method):
         self.generation_method = generation_method
-        self.fileDescriptionSRL = fileDescriptionSRL
     
     #MÉTODO 1 --> método para extrair o id do usuário da coluna descrição
     def extract_id_user(self,description):
@@ -34,7 +33,7 @@ class MinimalDataset:
 
     #MÉTODO  -> Método para analise de logs segundo o tipo de log enviado "SQL", "MOODLE", "MOODLE_PYTHON"
     # retorna um dataframe onde cada coluna é um log e os valores é a quantidade de vezes que aquele log aparece
-    def log_analysis(self, fileLogs, fileLogsDelimiter, columnIdentifier, columnLogEvent):
+    def log_analysis(self, fileLogs, fileLogsDelimiter, columnIdentifier, columnLogEvent,fileDescriptionSRL, delFileDescriptionSRL):
         print(f'Data Generation Method: {self.generation_method}')
         print('\n--------- Dataframe Informartion ---------------\n')
         df_logs = pd.read_csv(fileLogs, delimiter=fileLogsDelimiter)
@@ -52,13 +51,16 @@ class MinimalDataset:
 
         elif(self.generation_method=='MOODLE'):
             # Substituindo os espaços por underline e removendo os pontos no final
-            pivot_df_logs.columns = pivot_df_logs.columns.str.replace(' ', '_').str.rstrip('.').str.lower()
+            #substituir os nomes dos eventos (colunas) pelo log técnico do moodle presente no arquivo de mapeamento srl
+            df_srl = pd.read_csv(fileDescriptionSRL, sep=delFileDescriptionSRL)
+            map_eventos = dict(zip(df_srl['event_name'], df_srl['event_log']))
+            pivot_df_logs.rename(columns=map_eventos, inplace=True)
             pivot_df_logs = pivot_df_logs.reset_index()
             return pivot_df_logs
 
         elif(self.generation_method=='MOODLE_PYTHON'):      
             #substituir os nomes dos eventos (colunas) pelo log técnico do moodle presente no arquivo de mapeamento srl
-            df_srl = pd.read_csv(self.fileDescriptionSRL, sep=';')
+            df_srl = pd.read_csv(fileDescriptionSRL, sep=delFileDescriptionSRL)
             map_eventos = dict(zip(df_srl['event_name'], df_srl['event_log']))
             pivot_df_logs.rename(columns=map_eventos, inplace=True)
             pivot_df_logs = pivot_df_logs.reset_index()
@@ -70,9 +72,9 @@ class MinimalDataset:
 
 
     #MÉTODO  -->   Realiza a criação do dataframe a partir de um CSV contendo o mapeamento de logs em estratégias SRL pré-definidos
-    def mappingToSRL(self, dataframe):
+    def mappingToSRL(self, dataframe,fileDescriptionSRL, delFileDescriptionSRL):
         # Lê o CSV com separador ';'
-        df = pd.read_csv(self.fileDescriptionSRL, sep=';')
+        df = pd.read_csv(fileDescriptionSRL, sep=delFileDescriptionSRL)
 
         # Filtra os registros onde 'excluded' é 0
 
@@ -98,8 +100,7 @@ class MinimalDataset:
         ]
 
         return new_df
-
-               
+            
     #MÉTODO ANTIGO --> Método para mapeamento de logs para estratégias SRL --> antes de ter o arquivo 
     def mappingToSRLAntigo(self, dataframe):
         # Copiando as colunas iduser e firtname
@@ -177,9 +178,9 @@ class MinimalDataset:
 
     # MÉTODO 4 --> realiza a junção do dataframe pós mapeamento com o arquivo de tempo enviado pelo ususário
     # PRECISO REVER ESTE MÉTODO E REESCREVÊ-LO PARA TRABALHAR COM ID DO USUÁRIO E NAO COM O NOME NO CASO DE RELATÓRIO DE TEMPO GERADO PELO CONFIGURABLE REPORT
-    def joinTime(self, fileTime, dataframe):
+    def joinTime(self, fileTime, delimitterFileTime, dataframe):
         print("Método para junção com tempo de acesso, se necessário")   
-        df_time = pd.read_csv(fileTime, delimiter=",")
+        df_time = pd.read_csv(fileTime, delimiter=delimitterFileTime)
         #essa renomeação deve acontecer sempre que o arquivo tempo estiver com esquema relacional (userid, total_time_spent)
         # retirar essa linha e colocar o padrão de arquivo de tempo com (iduser, time)
         if(self.generation_method=='SQL'):
@@ -189,33 +190,24 @@ class MinimalDataset:
             return df_final
 
         elif(self.generation_method=='MOODLE'):
-            #essa parte precisa ser melhorada, pois o relatório de tempo do configurable report não vem com id
-            df_filtrado = df_time[df_time['Nome do aluno'].isin(dataframe['name'])].drop_duplicates(subset='Nome do aluno')
-
-            df_filtrado['tempo_em_segundos'] = df_filtrado['Tempo de dedicação ao curso'].apply(self.converToSeconds)
-
-            df_filtrado = df_filtrado.rename(columns={'Nome do aluno':'name'})
-
-            df_junto = pd.merge(dataframe, df_filtrado, on='name', how='inner')
-
-            df_junto = df_junto.rename(columns={'tempo_em_segundos':'time'})
-
-            df_final = df_junto[['iduser', 'name','seeking_social_assistance','goal_setting_planning','self_evaluation','keeping_records_monitoring','review_records','time']]
+            #conversão de tempo do padrão gerado pelo configurable reports moodle ifcdm
+            df_time['time'] = df_time['time'].apply(self.converToSeconds)
+            df_final = pd.merge(dataframe, df_time, on='iduser', how='inner')
             return df_final
 
         elif(self.generation_method=='MOODLE_PYTHON'):
-            df_time = df_time.rename(columns={'id': 'name', 'tempo_curso_segundos': 'time'})
-            df_final = pd.merge(dataframe, df_time, on='name', how='inner')
+            #df_time = df_time.rename(columns={'id': 'name', 'tempo_curso_segundos': 'time'})
+            df_final = pd.merge(dataframe, df_time, on='iduser', how='inner')
             return df_final
 
-    #MÉTODO 5 --> Método para carregar e retornar um dataframe com notas do usuário
+    #MÉTODO 5 --> Método para estruturar o arquivo de tempo
     def structureTime(self, path, fileLogs, fileLogsDelimiter, fileTime, fileTimeDelimiter):
         # Lê os arquivos CSV de log e de tempo
         df_logs = pd.read_csv(fileLogs, delimiter=fileLogsDelimiter)
         df_time = pd.read_csv(fileTime, delimiter=fileTimeDelimiter)
 
         # Faz o merge entre os dois DataFrames com base na coluna 'name'
-        df_merge = pd.merge(df_logs, df_time, on='name', how='inner')
+        df_merge = pd.merge(df_logs, df_time, on='nome_completo', how='inner')
 
         # Seleciona apenas as colunas 'iduser' e 'time', removendo duplicatas
         df_final = df_merge[['iduser', 'time']].drop_duplicates().reset_index(drop=True)
@@ -229,7 +221,31 @@ class MinimalDataset:
         print(f"File Time saved in {output_file}")
 
 
-    #MÉTODO 6 --> Vai receber um dataframe e salvar em arquivo .csv; deve ser chamado após método de log analise, mapeamento e jointime
+    #Método 6 --> Para criar o arquivo de mapeamento SRL baseado no mapeamento padrão já pré-definido
+    def generateSRLFileMap(self, path,fileLog, delimiterLog,  defaultSRLFile, delimiterSRL):
+        # Carrega o arquivo de log
+        df = pd.read_csv(fileLog, delimiter=delimiterLog)
+        # Carrega o arquivo de SRL padrão
+        df_srl = pd.read_csv(defaultSRLFile, sep=delimiterSRL)
+        # 1. Eventos presentes em df['nome_evento']
+        eventos_df = set(df['nome_evento'].unique())
+        # 2. Eventos registrados em df_srl
+        eventos_srl = set(df_srl['event_name'].unique())
+
+        # 3. Eventos em df_srl que também estão em df
+        eventos_comuns = eventos_srl & eventos_df
+        df_srl_filtrado = df_srl[df_srl['event_name'].isin(eventos_comuns)]
+        fileName= 'fileSRLMappping'+self.generation_method+'.csv'
+        df_srl_filtrado.to_csv(path+fileName, sep=';', encoding='utf-8', index=False)
+        print(f"File {fileName} with SRL Mapping saved in {path}")
+
+        # 4. Eventos de df que NÃO estão em df_srl
+        eventos_nao_mapeados = list(eventos_df - eventos_srl)
+        print(f"\nThe following events are not mapped in the SRL strategy. Please manually map them in the file {fileName}.")
+        print(eventos_nao_mapeados)
+
+
+    #MÉTODO 7 --> Vai receber um dataframe e salvar em arquivo .csv; deve ser chamado após método de log analise, mapeamento e jointime
     def generateMinimalDataset(self,path, dataframe):
         dataframe.to_csv(path+'generaldataset_'+self.generation_method+'.csv', sep=';', encoding='utf-8', index=False)
         print(f"MinimalDataset saved in {path}")
