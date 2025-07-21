@@ -60,10 +60,10 @@ class ResultsAnalysis:
         valid_clusters = [c for c in unique_clusters if c != -1]
 
         #teste U de Mann Whitney aplicado quando o número de clusters for 2
-        if len(unique_clusters) == 2:
+        if len(valid_clusters) == 2:
             print(f'** Two clusters were found; therefore, we will apply the Mann-Whitney U test. **')
             # Buscando os labels dos clusters
-            cluster_a, cluster_b = unique_clusters
+            cluster_a, cluster_b = valid_clusters
 
             df_cluster_a = df_cluster[df_cluster['cluster'] == cluster_a]
             df_cluster_b = df_cluster[df_cluster['cluster'] == cluster_b]
@@ -247,6 +247,7 @@ class ResultsAnalysis:
         self.checkProfileSRL(dataframe)
         #leitura do arquivo de notas
         dfGrade = pd.read_csv(fileGrade, delimiter=separatorFileGrade)
+    
         #Caso a coluna grade seja do tipo object, ou seja, formato "9,6", converte-se para padrão 9.6
         if dfGrade["grade"].dtype == object:
             dfGrade["grade"] = dfGrade["grade"].str.replace(",", ".", regex=False)
@@ -265,7 +266,7 @@ class ResultsAnalysis:
 
         # Fazendo o merge do dataframe de cluster com o dataframe de notas para iniciar a análise de notas por cluster
         df2 = dataframe.merge(dfGrade[['iduser', 'status']], on='iduser', how='left')
-        df2 = df2.fillna('C')  # Substituir NaN por 0
+        df2 = df2.fillna('C')  # Substituir NaN por 
         
         # Contar a frequência de cada conceito em cada cluster
         concept_counts = df2.groupby(['cluster', 'status']).size().unstack(fill_value=0)
@@ -294,70 +295,58 @@ class ResultsAnalysis:
             print("-"*40)
 
     #MÉTODO_7 --> Método para destacar a descrição dos perfis SRL em formato de gráfico de barras
-    def profileSRLGraphics(self, dataframe, fileGrade, separatorFileGrade, path):
+    def profileSRLGraphics(self, dataframe, fileGrade, separatorFileGrade, path, show_outliers=True):
         dfGrade = pd.read_csv(fileGrade, delimiter=separatorFileGrade)
-        #Caso a coluna grade seja do tipo object, ou seja, formato "9,6", converte-se para padrão 9.6
+
+        # Caso a coluna grade seja do tipo object, converte "9,6" para "9.6"
         if dfGrade["grade"].dtype == object:
             dfGrade["grade"] = dfGrade["grade"].str.replace(",", ".", regex=False)
 
-        #depois verifica-se se a coluna grade não é numérica, fazemos a parte, pois pode ter casos de "9.5"
-        #caso não seja numérico, realiza-se a conversão
         if not pd.api.types.is_numeric_dtype(dfGrade["grade"]):
-            # Converter a coluna "grade" para numérico (float)
             dfGrade["grade"] = pd.to_numeric(dfGrade["grade"], errors='coerce')
 
-        # Aplicar a lógica para criar a coluna "status": notas abaixo de 6 representa status C - reprovado
-        # notas entre 6 e 8 representam alunos aprovados
-        # notas acima de 8 representam alunos também aprovados e com bom rendimento 
-        # essa regra pode mudar a cada análise
         dfGrade["status"] = dfGrade["grade"].apply(lambda x: "C" if x < 6 else ("B" if x < 8 else "A"))
 
-        # Fazendo o merge do dataframe de cluster com o dataframe de notas para iniciar a análise de notas por cluster
         df2 = dataframe.merge(dfGrade[['iduser', 'status']], on='iduser', how='left')
-        df2 = df2.fillna('C')  # Substituir NaN por 0
-        
-        # Contar a frequência de cada conceito em cada cluster
-        concept_counts = df2.groupby(['cluster', 'status']).size().unstack(fill_value=0)
+        df2 = df2.fillna('C')
 
-        # Convertendo as frequências em porcentagens
+        # Filtrar outliers caso solicitado
+        if not show_outliers:
+            if -1 in df2['cluster'].values:
+                df2 = df2[df2['cluster'] != -1]
+
+        concept_counts = df2.groupby(['cluster', 'status']).size().unstack(fill_value=0)
         concept_percentages = concept_counts.div(concept_counts.sum(axis=1), axis=0) * 100
 
-        # Definindo as cores do gráfico
-        colors = ['#1f77b4', '#aec7e8', '#ffbb78']  # Dark blue, light blue, light orange
+        colors = ['#1f77b4', '#aec7e8', '#ffbb78']
 
-        # Criando o gráfico de barras horizontais empilhadas
         ax = concept_percentages.plot(kind='barh', stacked=True, figsize=(10, 6), color=colors)
 
-        # Adicionando os rótulos de porcentagem em cada barra
         for i, (index, row) in enumerate(concept_percentages.iterrows()):
             cumulative_width = 0
             for j, value in enumerate(row):
                 if value > 0:
                     ax.text(
-                        cumulative_width + value / 2,  # posição x no meio da barra atual
-                        i,                             # posição y (linha)
-                        f'{value:.1f}%',               # texto formatado
+                        cumulative_width + value / 2,
+                        i,
+                        f'{value:.1f}%',
                         va='center', ha='center', fontsize=9, color='black'
                     )
                     cumulative_width += value
 
-        # Restante da personalização
-        #plt.title('Percentage of Students by Grade in Each Cluster')
         plt.xlabel('Percentage (%)')
         plt.ylabel('Cluster')
         plt.yticks(rotation=0)
         plt.legend(title='Grade')
         plt.grid(axis='x', linestyle='--', alpha=0.7)
 
-        # Salvando e mostrando o gráfico na tela
-        plt.savefig(path+self.algorithm+'_profileSRL.png')
+        plt.savefig(path + self.algorithm + '_profileSRL.png')
         print(f'Profile SRL Graphic for {self.algorithm} algorithm saved in {path}')
         plt.show()
-    
 
     #MÉTODO_8 -> Método para criar vários tipos de gráficos de comparação dos cluster por atributos 
-    def plotGraphicClusters(self, dataframe, rows, columns,type_graphic, path):
-        print('método para criar e salvar os boxplot de comparação dos dois clusters')
+    def plotGraphicClusters(self, dataframe, rows, columns, type_graphic, path, show_outliers=True):
+       
         numeric_columns = dataframe.columns[1:-1]
 
         # Criar novo DataFrame sem colunas desnecessárias
@@ -366,29 +355,34 @@ class ResultsAnalysis:
         else:
             df_cluster = dataframe
 
+        # Filtrar outliers se solicitado
+        if not show_outliers:
+            if -1 in df_cluster['cluster'].values:
+                df_cluster = df_cluster[df_cluster['cluster'] != -1]
+
         # Garantir que apenas as colunas numéricas sejam usadas, excluindo 'cluster'
         list_columns = [col for col in df_cluster.columns if col != 'cluster']
 
-        # Configurar a grade do gráfico
-        plt.figure(figsize=(16, 8))  # Ajustando o tamanho da figura
-        num_subplots = len(list_columns)  # Definir o número correto de subgráficos
+        plt.figure(figsize=(16, 8))
+        num_subplots = len(list_columns)
 
-        # Criar os gráficos
-        for i, col in enumerate(list_columns, 1):  # Agora, 'cluster' não será incluído
+        for i, col in enumerate(list_columns, 1):
             plt.subplot(rows, columns, i)
-            if(type_graphic=='boxplot'):
+
+            if type_graphic == 'boxplot':
                 sns.boxplot(x='cluster', y=col, data=df_cluster, hue='cluster', palette="Set2", legend=False)
-            elif(type_graphic=='violinplot'):
+            elif type_graphic == 'violinplot':
                 sns.violinplot(x='cluster', y=col, data=df_cluster, hue='cluster', palette="Set2", legend=False)
-            elif(type_graphic=='stripplot'):
+            elif type_graphic == 'stripplot':
                 sns.stripplot(x='cluster', y=col, data=df_cluster, hue='cluster', palette="Set2", legend=False)
-            elif(type_graphic=='density'):
-                sns.kdeplot(data=df_cluster, x=col,hue='cluster',fill=True, common_norm=False, palette="Set2")
+            elif type_graphic == 'density':
+                sns.kdeplot(data=df_cluster, x=col, hue='cluster', fill=True, common_norm=False, palette="Set2")
             else:
                 print('Unsupported chart type!\nChoose: boxplot, violinplot, stripplot or density to generate the plot')
-            plt.title(col)  # Adiciona título para melhor visualização
+
+            plt.title(col)
 
         plt.tight_layout()
-        plt.savefig(path+self.algorithm+type_graphic+'.png')
+        plt.savefig(path + self.algorithm + type_graphic + '.png')
         print(f'{type_graphic} for {self.algorithm} algorithm saved in {path}')
         plt.show()
