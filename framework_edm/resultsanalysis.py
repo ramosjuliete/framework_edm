@@ -204,7 +204,7 @@ class ResultsAnalysis:
             print("❌ Error: At least two clusters are required to perform a statistical significance test.")
             return
 
-        # 🏆 Garantir que todos os clusters estejam no ranking
+        # Garantir que todos os clusters estejam no ranking
         all_clusters = set(valid_clusters)  # Todos os clusters
         ranked_clusters = set(higher_mean_counter.keys())  # Apenas os que tiveram alguma média maior que os demais
 
@@ -225,7 +225,7 @@ class ResultsAnalysis:
             print(f"   - Mean:\n{stats['mean']}")
             print(f"   - Median:\n{stats['median']}")
 
-        # 🏆 Exibir a hierarquia dos clusters (SRL e demais)
+        # Exibir a hierarquia dos clusters (SRL e demais)
         print("\n **Final Cluster Ranking (From SRL to Lowest)**")
         if len(cluster_ranking) == 2:
             print(f"   1. Cluster {cluster_ranking[0]} → SRL Profile")
