@@ -233,12 +233,10 @@ class Clustering:
 
     #MÉTODO 9 -> Método para salvar o cluster em uma arquivo no formato csv.
     def saveClustering(self,dataframe,name):
-        dataframe.to_csv(self.path+name+'.csv', sep=';', encoding='utf-8', index=False)
-        print(f"\n File Clustering saved in {self.path}")
-
-        #mostrando as primeiras linhas do dataframe salvo --> apagar essa linha depois
-        print('\n--------------------Dataframe após clustering!--------------------')
-        print(dataframe.head())
+        file = self.path+name+'.csv'
+        dataframe.to_csv(file, sep=';', encoding='utf-8', index=False)
+        print(f"\n File Clustering saved in {file}")
+        return file
 
     #MÉTODO 10 --> Aplicação do algoritmo k-means com o valor k enviado por parâmetro
     def kmeans(self, dataframe, valueK):
@@ -258,17 +256,18 @@ class Clustering:
         #salvando o arquivo do k-means para posterior analise dos resultados
         dataframe['cluster'] = df['cluster']
         name = self.algorithm+'_'+str(valueK)
-        self.saveClustering(dataframe,name)
+        fileCluster = self.saveClustering(dataframe,name)
+        return fileCluster
         
     #MÉTODO 11 --> Aplicação do algoritmo Agglomerative com o número de clusters enviado por parâmetro
-    def agglomerative(self, dataframe,  numberClusters):
+    def agglomerative(self, dataframe,  n_clusters):
         df = self.removeIdentifierColumns(dataframe)
 
-        cluster = AgglomerativeClustering(n_clusters=numberClusters)
+        cluster = AgglomerativeClustering(n_clusters=n_clusters)
         preds = cluster.fit_predict(df)
         
         #calculando e mostrando as medidas de validação interna
-        print(f'Internal Validation Measures for {self.algorithm} Algorithm with Clusters={numberClusters}')
+        print(f'Internal Validation Measures for {self.algorithm} Algorithm with Clusters={n_clusters}')
         self.internalValidation(preds,df)
         
         #adicionando coluna cluster no dataframe
@@ -276,8 +275,9 @@ class Clustering:
         
         #salvando o arquivo do k-means para posterior analise dos resultados
         dataframe['cluster'] = df['cluster']
-        name = self.algorithm+'_'+str(numberClusters)
-        self.saveClustering(dataframe,name)
+        name = self.algorithm+'_'+str(n_clusters)
+        fileCluster = self.saveClustering(dataframe,name)
+        return fileCluster
 
     #MÉTODO 12 -> Aplicação do algoeitmo HDBSCAN com os dois parâmetros de entrada definidos 
     def hdbscan(self, dataframe, value_min_samples, value_min_cluster_size):
@@ -303,7 +303,8 @@ class Clustering:
         #salvando o arquivo do k-means para posterior analise dos resultados
         dataframe['cluster'] = df['cluster']
         name = self.algorithm+'_'+str(num_clusters)
-        self.saveClustering(dataframe,name)
+        fileCluster = self.saveClustering(dataframe,name)
+        return fileCluster
         
     #MÉTODO 13 --> Aplicação do algoritmo dbscan (não foram feitos muitos testes, pois os dados não geram clusters com esse algoritmo)
     def dbscan(self, dataframe, value_eps, value_minsamples):
@@ -328,7 +329,8 @@ class Clustering:
         #salvando o arquivo do k-means para posterior analise dos resultados
         dataframe['cluster'] = df['cluster']
         name = self.algorithm+'_'+str(n_clusters)
-        self.saveClustering(dataframe,name)
+        fileCluster = self.saveClustering(dataframe,name)
+        return fileCluster
         
     #MÉTODO 14 -> Aplicação do algoritmo EM (não foram feitos muitos testes, pois os dados dão resultados bem ruins com esse algoritmo)
     def gaussian(self, dataframe,n_clusters):
@@ -349,5 +351,6 @@ class Clustering:
         #salvando o arquivo do k-means para posterior analise dos resultados
         dataframe['cluster'] = df['cluster']
         name = self.algorithm+'_'+str(n_clusters)
-        self.saveClustering(dataframe,name)
+        fileCluster = self.saveClustering(dataframe,name)
+        return fileCluster
         
