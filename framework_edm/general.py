@@ -3,18 +3,25 @@ import io
 from framework_edm.exploratoryanalysis import ExploratoryAnalysis
 from framework_edm.clustering import Clustering
 from framework_edm.resultsanalysis import ResultsAnalysis
+
+#Classe Geral para executar sequência de passos do framework EDM --> considera-se que o usuário tenha um minimaldataset para enviar em formato CSV
 class General:
     def __init__(self, fileDataset, delimiterDataset, path):
         self.dataset = fileDataset
         self.delimiterDataset = delimiterDataset
         self.path = path
 
-    def execute(self, algorithm, fileGrade=None, delimiterGrade=None, **kwargs):
-        # --- Classe ExploratoryAnalysis ---
+    def execute(self, algorithm, fileGrade=None, delimiterGrade=None, normalityTeste=None, **kwargs):
+        # --- Classe ExploratoryAnalysis --- Padrão: executar o teste de normalidade smirnov 
         ea = ExploratoryAnalysis(self.dataset, self.delimiterDataset)
         df_explory = ea.loadDataframe()
         ea.statisticalDescription(df_explory)
-        ea.applyNormalityTest(df_explory, 'smirnov')
+        #Por padrão, caso não passe o teste de normalidade a ser executado, o smirnov é acionado
+        #Valores que podem ser passados: 'shapiro' e 'anderson'
+        if normalityTeste:
+            ea.applyNormalityTest(df_explory, normalityTeste)
+        else: 
+            ea.applyNormalityTest(df_explory, 'smirnov')
         ea.createSpearmanMatrix(df_explory, self.path)
 
         # --- Classe Clustering ---
