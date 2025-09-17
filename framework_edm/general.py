@@ -9,7 +9,7 @@ class General:
         self.delimiterDataset = delimiterDataset
         self.path = path
 
-    def execute(self, algorithm, fileGrade, delimiterGrade, **kwargs):
+    def execute(self, algorithm, fileGrade=None, delimiterGrade=None, **kwargs):
         # --- Classe ExploratoryAnalysis ---
         ea = ExploratoryAnalysis(self.dataset, self.delimiterDataset)
         df_explory = ea.loadDataframe()
@@ -68,7 +68,9 @@ class General:
         try:
             ra.statisticalSignificance(df_cluster, 0.05)
             ra.checkProfileSRL(df_cluster)
-            ra.profileSRLdescription(df_cluster, fileGrade, delimiterGrade)
+            # Executa apenas se fileGrade e delimiterGrade forem informados
+            if fileGrade and delimiterGrade:
+                ra.profileSRLdescription(df_cluster, fileGrade, delimiterGrade)
         finally:
             # Restaura o stdout
             sys.stdout = stdout_original
@@ -78,8 +80,9 @@ class General:
         with open(output_file, "w", encoding="utf-8") as f:
             f.write(buffer.getvalue())
 
-        # Gráfico SRL Description e Gráficos de Análises Estatísticas
-        ra.profileSRLGraphics(df_cluster, fileGrade, delimiterGrade, self.path, False)
+        # Executa apenas se fileGrade e delimiterGrade forem informados
+        if fileGrade and delimiterGrade:
+            ra.profileSRLGraphics(df_cluster, fileGrade, delimiterGrade, self.path, False)
 
         graficos = ['density', 'boxplot', 'violinplot', 'stripplot']
         for grafico in graficos:
