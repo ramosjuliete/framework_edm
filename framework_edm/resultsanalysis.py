@@ -363,7 +363,13 @@ class ResultsAnalysis:
         # Garantir que apenas as colunas numéricas sejam usadas, excluindo 'cluster'
         list_columns = [col for col in df_cluster.columns if col != 'cluster']
 
-        plt.figure(figsize=(16, 8))
+        # Calcular tamanho da figura dinamicamente
+        base_width = 4   # ajuste fino conforme necessidade
+        base_height = 4
+        fig_width = columns * base_width
+        fig_height = rows * base_height
+        plt.figure(figsize=(fig_width, fig_height))
+
         num_subplots = len(list_columns)
 
         for i, col in enumerate(list_columns, 1):
