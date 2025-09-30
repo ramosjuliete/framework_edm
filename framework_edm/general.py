@@ -31,37 +31,37 @@ class General:
         if algorithm == "kmeans":
             k = kwargs.get("k")
             if k is None:
-                raise ValueError("O algoritmo kmeans exige o parâmetro 'k'")
+                raise ValueError("The K-Means algorithm requires the 'k' parameter.")
             fileCluster = cluster.kmeans(df_explory, k)
 
         elif algorithm == "agglomerative":
             n_clusters = kwargs.get("n_clusters")
             if n_clusters is None:
-                raise ValueError("O algoritmo Agglomerative exige o parâmetro 'n_clusters'")
+                raise ValueError("The Agglomerative algorithm requires the 'n_clusters' parameter.")
             fileCluster = cluster.agglomerative(df_explory, n_clusters)
 
         elif algorithm == "gaussian":
             n_clusters = kwargs.get("n_clusters")
             if n_clusters is None:
-                raise ValueError("O algoritmo Agglomerative exige o parâmetro 'n_clusters'")
+                raise ValueError("The Gaussian algorithm requires the 'n_clusters' parameter.")
             fileCluster = cluster.gaussian(df_explory, n_clusters)
 
         elif algorithm == "hdbscan":
             min_samples = kwargs.get("min_samples")
             min_cluster_size = kwargs.get("min_cluster_size")
             if min_samples is None or min_cluster_size is None:
-                raise ValueError("O algoritmo hdbscan exige 'min_samples' e 'min_cluster_size'")
+                raise ValueError("The HDBSCAN algorithm requires 'min_samples' and 'min_cluster_size'")
             fileCluster = cluster.hdbscan(df_explory, min_samples, min_cluster_size)
         
         elif algorithm == "dbscan":
             value_eps = kwargs.get("value_eps")
             value_minsamples = kwargs.get("value_minsamples")
             if value_eps is None or value_minsamples is None:
-                raise ValueError("O algoritmo dbscan exige 'value_eps' e 'value_minsamples'")
+                raise ValueError("The DBSCAN algorithm requires 'value_eps' and 'value_minsamples'")
             fileCluster = cluster.dbscan(df_explory, value_eps, value_minsamples)
 
         else:
-            raise ValueError(f"Algoritmo {algorithm} não suportado")
+            raise ValueError(f"The {algorithm} algorithm is not supported.")
 
         # --- Classe ResultsAnalysis ---
         ra = ResultsAnalysis(algorithm, fileCluster, ';')
