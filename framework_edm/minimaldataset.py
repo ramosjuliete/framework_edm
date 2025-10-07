@@ -1,5 +1,9 @@
 import pandas as pd
+import unicodedata
 import re
+from pathlib import Path
+
+
 class MinimalDataset:
     def __init__(self, generation_method):
         self.generation_method = generation_method
@@ -10,25 +14,51 @@ class MinimalDataset:
         if match:
             return match.group(1)  # Retorna o ID capturado
         return None  # Retorna None se não encontrar um ID
+
+    def normalize_column_name(self, col: str) -> str:
+        # remove acentos
+        col = ''.join(
+            c for c in unicodedata.normalize('NFD', col)
+            if unicodedata.category(c) != 'Mn'
+        )
+        # minúsculas
+        col = col.lower()
+        # troca tudo que não for a-z/0-9 por "_"
+        col = re.sub(r'[^a-z0-9]+', '_', col)
+        # remove "_" no começo/fim
+        col = col.strip('_')
+        return col
     
     #método para filtrar os logs, caso o tipo de método de geração for MOODLE ou MOODLE PYTHON, uma vez que o relatório de logs gerado pelo ambiente Moodle não separa estudantes, professores, administradores
     def logfilltering(self, fileLogs, fileLogsDelimiter, columnGeneral, columnDescription, fileStudents, columnFilter, logPathDestination):
+        # lê arquivos
         dfLogs = pd.read_csv(fileLogs, delimiter=fileLogsDelimiter)
- 
-        #leitura do arquivo que contem os nomes completos dos estudantes conforme nome destacado no relatório de logs
         dfStudents = pd.read_csv(fileStudents)
 
-        #filtrando os logs dos estudantes do relatório completo de logs
-        df_filterlogs = dfLogs[dfLogs[columnGeneral].isin(dfStudents[columnFilter])]
+        # normaliza TODOS os cabeçalhos já na leitura (evita problemas de acentos/variações)
+        dfLogs.columns = [self.normalize_column_name(c) for c in dfLogs.columns]
+        dfStudents.columns = [self.normalize_column_name(c) for c in dfStudents.columns]
 
-        # Aplicar a função à coluna "Descrição" e criar a nova coluna "id_user"
-        df_filterlogs["iduser"] = df_filterlogs[columnDescription].apply(self.extract_id_user)
+        # normaliza também os nomes de coluna passados como argumento
+        col_general = self.normalize_column_name(columnGeneral)
+        col_descr   = self.normalize_column_name(columnDescription)
+        col_filter  = self.normalize_column_name(columnFilter)
 
-        fileSaved = logPathDestination+'logMoodleFiltered.csv'
+        # filtra pelos estudantes
+        df_filterlogs = dfLogs[dfLogs[col_general].isin(dfStudents[col_filter])]
+
+        # cria iduser a partir da coluna de descrição
+        df_filterlogs["iduser"] = df_filterlogs[col_descr].apply(self.extract_id_user)
+
+        # garante cabeçalhos normalizados no resultado (já estão, mas mantém a intenção)
+        df_filterlogs.columns = [self.normalize_column_name(c) for c in df_filterlogs.columns]
+
+        # salva CSV
+        Path(logPathDestination).mkdir(parents=True, exist_ok=True)
+        fileSaved = str(Path(logPathDestination) / 'logMoodleFiltered.csv')
+        df_filterlogs.to_csv(fileSaved, index=False)
 
         print(f'File logMoodleFiltered.csv saved in: {logPathDestination}')
-
-        df_filterlogs.to_csv(fileSaved, index=False)
 
 
     #MÉTODO  -> Método para analise de logs segundo o tipo de log enviado "SQL", "MOODLE", "MOODLE_PYTHON"
@@ -181,7 +211,7 @@ class MinimalDataset:
         # Carrega o arquivo de SRL padrão
         df_srl = pd.read_csv(defaultSRLFile, sep=delimiterSRL)
         # 1. Eventos presentes em df['nome_evento']
-        eventos_df = set(df['nome_evento'].unique())
+        eventos_df = set(df['nome_do_evento'].unique())
         # 2. Eventos registrados em df_srl
         eventos_srl = set(df_srl['event_name'].unique())
 
