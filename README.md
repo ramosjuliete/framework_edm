@@ -118,7 +118,7 @@ Depending on configuration, the pipeline may produce:
 
 ## 📄 License
 
-> MIT License — Free for academic and commercial use with attribution.
+> 
 
 ---
 
