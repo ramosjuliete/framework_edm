@@ -74,10 +74,12 @@ class General:
 
         try:
             ra.statisticalSignificance(df_cluster, 0.05)
-            ra.checkProfileSRL(df_cluster)
             # Executa apenas se fileGrade e delimiterGrade forem informados
             if fileGrade and delimiterGrade:
                 ra.profileSRLdescription(df_cluster, fileGrade, delimiterGrade)
+            else:
+                ra.checkProfileSRL(df_cluster)
+
         finally:
             # Restaura o stdout
             sys.stdout = stdout_original
@@ -86,6 +88,9 @@ class General:
         output_file = f"{self.path}{algorithm}_results.txt"
         with open(output_file, "w", encoding="utf-8") as f:
             f.write(buffer.getvalue())
+
+        # 🔹 Mostra mensagem final para o usuário
+        print(f"✅ Resultados salvos em: {output_file}")
 
         # Executa apenas se fileGrade e delimiterGrade forem informados
         if fileGrade and delimiterGrade:
