@@ -90,8 +90,8 @@ class General:
             f.write(buffer.getvalue())
 
         # 🔹 Mostra mensagem final para o usuário
-        print("DEBUG: chegou no final do execute")
-        print(f"Statistical Significance Results and SRL Analysis saved in: {output_file}")
+        stdout_original.write(f"Statistical Significance Results and SRL Analysis saved in: {output_file}\n")
+        stdout_original.flush()
 
         # Executa apenas se fileGrade e delimiterGrade forem informados
         if fileGrade and delimiterGrade:
