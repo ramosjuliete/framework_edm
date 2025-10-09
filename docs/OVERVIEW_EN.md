@@ -10,10 +10,10 @@
 ---
 
 ## 📚 Detailed Documentation by Class
-- [MinimalDataset](MinimalDataset_Documentacao.md)  
-- [ExploratoryAnalysis](ExploratoryAnalysis_Documentacao.md)  
-- [Clustering](Clustering_Documentacao.md)  
-- [ResultsAnalysis](ResultsAnalysis_Documentacao.md)  
-- [General](General_Documentacao.md)  
+- [MinimalDataset](MinimalDataset_EN.md)  
+- [ExploratoryAnalysis](ExploratoryAnalysis_EN.md)  
+- [Clustering](Clustering_EN.md)  
+- [ResultsAnalysis](ResultsAnalysis_EN.md)  
+- [General](General_EN.md)  
 
 🔗 See the above files for technical details of each class.  
