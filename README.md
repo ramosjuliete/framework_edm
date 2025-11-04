@@ -116,7 +116,11 @@ Depending on configuration, the pipeline may produce:
 
 ---
 
-## 📄 License
+## 📄 License and Use
+
+The `framework_edm` is provided for **academic and research purposes**.  
+If you use this framework or any part of its methodology in your work, please **cite the author and the associated doctoral thesis**.  
+Reusing or extending the framework for new studies or applications is encouraged, provided that proper credit is given.
 
 > 
 
