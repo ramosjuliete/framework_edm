@@ -1,6 +1,6 @@
 # framework_edm
 
-`framework_edm` is a modular pipeline designed for **Exploratory Data Analysis**, **Unsupervised Clustering**, and **Post-Cluster Statistical Profiling**, with a focus on **Educational Data Mining (EDM)** and **Self-Regulated Learning (SRL) behavior analysis**.
+`framework_edm` is a modular framework designed for **Exploratory Data Analysis**, **Unsupervised Clustering**, and **Post-Cluster Statistical Profiling**, with a focus on **Educational Data Mining (EDM)** and **Self-Regulated Learning (SRL) behavior analysis**.
 
 It allows users to run a **full end-to-end analysis workflow with a single command**, making it ideal for research workflows or repeatable analytical pipelines.
 
