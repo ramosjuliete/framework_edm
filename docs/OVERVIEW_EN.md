@@ -55,7 +55,7 @@ Two main diagrams describe the internal architecture and execution flow of the f
 The **Class Diagram** represents the internal structure of the framework, showing the main classes, their attributes, methods, and relationships.  
 It provides a conceptual overview of how the system components interact and how the analytical workflow is organized.
 
-![Framework Class Diagram](docs/_DiagramaClasse.png)
+![Framework Class Diagram](_DiagramaClasse.png)
 
 ---
 
@@ -64,7 +64,7 @@ It provides a conceptual overview of how the system components interact and how 
 The **Sequence Diagram** illustrates the execution flow of the **data analysis stage** coordinated by the `General` class.  
 This class acts as the orchestrator that integrates exploratory analysis, clustering, and results interpretation based on a previously constructed **minimal dataset**.
 
-![Framework Sequence Diagram](docs/DiagramaDeSequencia_Orquestrador.png)
+![Framework Sequence Diagram](DiagramaDeSequencia_Orquestrador.png)
 
 ---
 
